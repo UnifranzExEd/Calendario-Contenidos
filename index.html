@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="UNIFRANZ Online - Calendario de Contenidos para gestión de redes sociales">
+    <title>Login | UNIFRANZ Online Calendar</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="stylesheet" href="assets/css/app.css">
+    <style>
+        .login-particles {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .login-particles .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: rgba(99, 102, 241, 0.4);
+            border-radius: 50%;
+            animation: float linear infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
+        }
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 4px;
+        }
+        .password-toggle:hover { color: var(--text-secondary); }
+        .form-group.password-group { position: relative; }
+    </style>
+</head>
+<body>
+    <!-- Animated particles background -->
+    <div class="login-particles" id="particles"></div>
+
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="logo">
+                <img src="assets/img/logo.svg" alt="UNIFRANZ Online" style="height: 50px; width: auto; margin-bottom: 8px;">
+                <p>Calendario de Contenidos</p>
+            </div>
+
+            <div class="error-msg" id="errorMsg"></div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" 
+                           id="email" 
+                           name="email" 
+                           class="form-control" 
+                           placeholder="tu@email.com"
+                           required 
+                           autocomplete="email">
+                </div>
+
+                <div class="form-group password-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" 
+                           id="password" 
+                           name="password" 
+                           class="form-control" 
+                           placeholder="••••••••"
+                           required 
+                           autocomplete="current-password">
+                    <button type="button" class="password-toggle" onclick="togglePassword()" id="toggleBtn"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block btn-lg" id="loginBtn">
+                    Iniciar Sesión
+                </button>
+            </form>
+
+            <p style="text-align: center; margin-top: 24px; font-size: 0.75rem; color: var(--text-muted);">
+                UNIFRANZ Online © 2026
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Animated particles
+        (function() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 30; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.left = Math.random() * 100 + '%';
+                p.style.width = p.style.height = (Math.random() * 3 + 1) + 'px';
+                p.style.animationDuration = (Math.random() * 15 + 10) + 's';
+                p.style.animationDelay = (Math.random() * 10) + 's';
+                container.appendChild(p);
+            }
+        })();
+
+        // Check if already logged in
+        (async function() {
+            try {
+                const res = await fetch('api/auth.php?action=me');
+                if (res.ok) {
+                    window.location.href = 'dashboard.html?v=' + Date.now();
+                }
+            } catch(e) {}
+        })();
+
+        // Password toggle
+        function togglePassword() {
+            const input = document.getElementById('password');
+            const btn = document.getElementById('toggleBtn');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+            } else {
+                input.type = 'password';
+                btn.textContent = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+            }
+        }
+
+        // Login handler via API
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            const errorMsg = document.getElementById('errorMsg');
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                errorMsg.textContent = 'Por favor completa todos los campos.';
+                errorMsg.classList.add('show');
+                return;
+            }
+
+            btn.innerHTML = '<span class="loading-spinner"></span> Ingresando...';
+            btn.disabled = true;
+            errorMsg.classList.remove('show');
+
+            try {
+                const res = await fetch('api/auth.php?action=login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    window.location.href = 'dashboard.html?v=' + Date.now();
+                } else {
+                    errorMsg.textContent = data.error || 'Email o contraseña incorrectos.';
+                    errorMsg.classList.add('show');
+                    btn.innerHTML = 'Iniciar Sesión';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                errorMsg.textContent = 'Error de conexión al servidor. Verifica que el servidor PHP esté funcionando.';
+                errorMsg.classList.add('show');
+                btn.innerHTML = 'Iniciar Sesión';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

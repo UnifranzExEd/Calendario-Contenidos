@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="UNIFRANZ Online - Analytics de Contenidos">
+<title>Analytics Pro | UNIFRANZ Online</title>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary:   #0a0a1a;
+  --bg-secondary: #111128;
+  --bg-card:      #161630;
+  --bg-glass:     rgba(255,255,255,0.04);
+  --bg-hover:     rgba(255,255,255,0.07);
+  --border:       rgba(255,255,255,0.08);
+  --border-light: rgba(255,255,255,0.14);
+  --accent:       #6366f1;
+  --accent2:      #8b5cf6;
+  --success:      #10b981;
+  --warning:      #f59e0b;
+  --danger:       #ef4444;
+  --info:         #3b82f6;
+  --text-primary: #f1f5f9;
+  --text-secondary:#94a3b8;
+  --text-muted:   #64748b;
+  --radius:       12px;
+  --radius-sm:    8px;
+  --shadow:       0 4px 24px rgba(0,0,0,0.4);
+  --transition:   all 0.2s ease;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* ── TOP HEADER ─────────────────────────────── */
+.app-header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(10,10,26,0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex; align-items: center; gap: 16px;
+}
+.header-brand {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 1.1rem; font-weight: 800;
+  background: linear-gradient(135deg,#6366f1,#a855f7);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.header-brand svg { color: #6366f1; -webkit-text-fill-color: initial; }
+.header-title { font-weight: 700; font-size: 1rem; color: var(--text-primary); }
+.header-subtitle { font-size: 0.78rem; color: var(--text-muted); }
+.header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+/* ── FILTER BAR ─────────────────────────────── */
+.filter-bar {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+}
+.filter-group { display: flex; align-items: center; gap: 6px; }
+.filter-group label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+.filter-input {
+  background: var(--bg-glass); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary);
+  padding: 6px 10px; font-size: 0.82rem; font-family: inherit;
+  transition: var(--transition); outline: none;
+}
+.filter-input:focus { border-color: var(--accent); background: rgba(99,102,241,0.06); }
+.quick-btns { display: flex; gap: 4px; }
+.quick-btn {
+  padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--bg-glass); color: var(--text-secondary);
+  font-size: 0.72rem; font-weight: 600; cursor: pointer; transition: var(--transition);
+  font-family: inherit;
+}
+.quick-btn:hover, .quick-btn.active {
+  background: rgba(99,102,241,0.15); color: var(--accent);
+  border-color: rgba(99,102,241,0.4);
+}
+.filter-sep { width: 1px; height: 24px; background: var(--border); }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: var(--radius-sm);
+  font-size: 0.82rem; font-weight: 600; font-family: inherit;
+  cursor: pointer; border: none; transition: var(--transition);
+}
+.btn-primary { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: white; }
+.btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn-secondary { background: var(--bg-glass); border: 1px solid var(--border); color: var(--text-secondary); }
+.btn-secondary:hover { border-color: var(--border-light); color: var(--text-primary); background: var(--bg-hover); }
+.btn-success { background: linear-gradient(135deg,#059669,#10b981); color: white; }
+.btn-success:hover { opacity: 0.88; }
+.btn-danger { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+
+/* ── MAIN LAYOUT ─────────────────────────────── */
+.main-content { padding: 24px; max-width: 1600px; margin: 0 auto; }
+
+/* ── LOADING / ERROR ─────────────────────────── */
+.loading-overlay {
+  position: fixed; inset: 0; background: rgba(10,10,26,0.85);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; flex-direction: column; gap: 16px;
+}
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid rgba(99,102,241,0.2);
+  border-top-color: #6366f1;
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── KPI CARDS ───────────────────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px; margin-bottom: 24px;
+}
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 16px;
+  transition: var(--transition);
+  position: relative; overflow: hidden;
+}
+.kpi-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.kpi-card.likes::before    { background: linear-gradient(90deg,#f43f5e,#ec4899); }
+.kpi-card.alcance::before  { background: linear-gradient(90deg,#6366f1,#8b5cf6); }
+.kpi-card.coments::before  { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
+.kpi-card.compartidos::before { background: linear-gradient(90deg,#10b981,#34d399); }
+.kpi-card.guardados::before{ background: linear-gradient(90deg,#3b82f6,#60a5fa); }
+.kpi-card.clics::before    { background: linear-gradient(90deg,#8b5cf6,#c084fc); }
+.kpi-card.publicaciones::before { background: linear-gradient(90deg,#06b6d4,#22d3ee); }
+.kpi-card.espectadores::before  { background: linear-gradient(90deg,#f97316,#fb923c); }
+.kpi-card:hover { border-color: var(--border-light); transform: translateY(-2px); box-shadow: var(--shadow); }
+.kpi-icon { font-size: 1.3rem; margin-bottom: 8px; opacity: 0.9; }
+.kpi-card.likes .kpi-icon         { color: #ec4899; }
+.kpi-card.alcance .kpi-icon       { color: #8b5cf6; }
+.kpi-card.coments .kpi-icon       { color: #fbbf24; }
+.kpi-card.compartidos .kpi-icon   { color: #34d399; }
+.kpi-card.guardados .kpi-icon     { color: #60a5fa; }
+.kpi-card.clics .kpi-icon         { color: #a855f7; }
+.kpi-card.publicaciones .kpi-icon { color: #22d3ee; }
+.kpi-card.espectadores .kpi-icon  { color: #fb923c; }
+.kpi-value { font-size: 1.7rem; font-weight: 800; color: var(--text-primary); line-height: 1; }
+.kpi-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 4px; }
+
+/* ── CHARTS GRID ─────────────────────────────── */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px; margin-bottom: 24px;
+}
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  position: relative;
+}
+.chart-card.full-width { grid-column: 1 / -1; }
+.chart-title {
+  font-size: 0.8rem; font-weight: 700; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.chart-title svg { opacity: 0.6; }
+.chart-container { position: relative; height: 260px; }
+.chart-container.tall { height: 320px; }
+
+/* ── SECTION TITLE ───────────────────────────── */
+.section-title {
+  font-size: 0.8rem; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.8px;
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── TOP TABLE ───────────────────────────────── */
+.table-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden; margin-bottom: 24px;
+}
+.table-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th {
+  padding: 10px 16px; font-size: 0.68rem; font-weight: 700;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.5px; text-align: left;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+}
+.data-table td {
+  padding: 10px 16px; font-size: 0.82rem;
+  border-bottom: 1px solid var(--border); color: var(--text-primary);
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: var(--bg-hover); }
+.data-table tr { cursor: pointer; transition: var(--transition); }
+.metric-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;
+}
+.badge-like    { background: rgba(244,63,94,0.12); color: #fb7185; }
+.badge-reach   { background: rgba(99,102,241,0.12); color: #818cf8; }
+.badge-comment { background: rgba(245,158,11,0.12); color: #fbbf24; }
+.captura-thumb {
+  width: 40px; height: 40px; border-radius: 6px;
+  object-fit: cover; border: 1px solid var(--border);
+}
+.no-captura {
+  width: 40px; height: 40px; border-radius: 6px;
+  background: var(--bg-glass); border: 1px dashed var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); font-size: 0.6rem; text-align: center;
+}
+.social-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 10px; font-size: 0.68rem; font-weight: 600;
+}
+.rank-badge {
+  width: 22px; height: 22px; border-radius: 50%; font-size: 0.68rem; font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.rank-1 { background: linear-gradient(135deg,#f59e0b,#fbbf24); color: #000; }
+.rank-2 { background: linear-gradient(135deg,#94a3b8,#cbd5e1); color: #000; }
+.rank-3 { background: linear-gradient(135deg,#b45309,#d97706); color: #fff; }
+.rank-other { background: var(--bg-glass); color: var(--text-muted); border: 1px solid var(--border); }
+
+/* ── DETAIL MODAL ────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; opacity: 0; pointer-events: none; transition: var(--transition);
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 16px; box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  max-width: 700px; width: 95%; max-height: 90vh;
+  display: flex; flex-direction: column;
+  transform: translateY(20px); transition: var(--transition);
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-header {
+  padding: 20px 24px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-header h3 { font-size: 1rem; font-weight: 700; }
+.modal-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+.modal-close {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 1.2rem; cursor: pointer; padding: 4px 8px;
+  border-radius: 6px; transition: var(--transition);
+}
+.modal-close:hover { background: var(--bg-glass); color: var(--text-primary); }
+
+/* ── CAPTURA UPLOAD ZONE ─────────────────────── */
+.captura-zone {
+  border: 2px dashed var(--border-light);
+  border-radius: var(--radius);
+  padding: 20px; text-align: center;
+  cursor: pointer; transition: var(--transition);
+  position: relative; margin-bottom: 16px;
+}
+.captura-zone:hover { border-color: var(--accent); background: rgba(99,102,241,0.04); }
+.captura-zone.dragover { border-color: var(--accent); background: rgba(99,102,241,0.08); }
+.captura-preview {
+  width: 100%; border-radius: 10px; max-height: 280px;
+  object-fit: contain; display: block;
+}
+.metrics-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-group label { display: block; font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+.form-control {
+  width: 100%; background: var(--bg-glass); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary);
+  padding: 8px 10px; font-size: 0.85rem; font-family: inherit; outline: none;
+  transition: var(--transition);
+}
+.form-control:focus { border-color: var(--accent); }
+
+/* ── EMPTY ───────────────────────────────────── */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.empty-state h3 { font-size: 1rem; margin-top: 12px; color: var(--text-secondary); }
+.empty-state p  { font-size: 0.82rem; margin-top: 6px; }
+
+/* ── PDF EXPORT PROGRESS ─────────────────────── */
+.pdf-toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 20px;
+  display: flex; align-items: center; gap: 10px;
+  box-shadow: var(--shadow); font-size: 0.85rem;
+  opacity: 0; transform: translateY(20px); transition: var(--transition);
+}
+.pdf-toast.show { opacity: 1; transform: translateY(0); }
+
+/* ── SCROLLBAR ───────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+/* ── RESPONSIVE ──────────────────────────────── */
+@media (max-width: 900px) {
+  .charts-grid { grid-template-columns: 1fr; }
+  .chart-card.full-width { grid-column: 1; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .metrics-form { grid-template-columns: 1fr; }
+}
+
+/* ── ANIMATIONS ──────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeInUp 0.35s ease forwards; }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingScreen">
+  <div class="spinner"></div>
+  <div style="color:var(--text-secondary);font-size:0.9rem;">Cargando Analytics...</div>
+</div>
+
+<!-- App Header -->
+<header class="app-header">
+  <div class="header-brand">
+    <svg viewBox="0 0 24 24" style="width:22px;height:22px;" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+    UNIFRANZ
+  </div>
+  <div>
+    <div class="header-title">Analytics Pro</div>
+    <div class="header-subtitle" id="periodLabel">Selecciona un rango de fechas</div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-secondary" onclick="window.location.href='dashboard.html'">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      Volver al Dashboard
+    </button>
+    <button class="btn btn-success" onclick="exportPDF()" id="btnPDF">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>
+      </svg>
+      Exportar PDF
+    </button>
+  </div>
+</header>
+
+<!-- Filter Bar -->
+<div class="filter-bar">
+  <!-- Quick presets -->
+  <div class="filter-group">
+    <label>Rango rápido</label>
+    <div class="quick-btns">
+      <button class="quick-btn" onclick="setQuick('week',true,this)">7 días</button>
+      <button class="quick-btn active" onclick="setQuick('month',true,this)">Este mes</button>
+      <button class="quick-btn" onclick="setQuick('last_month',true,this)">Mes anterior</button>
+      <button class="quick-btn" onclick="setQuick('quarter',true,this)">Trimestre</button>
+      <button class="quick-btn" onclick="setQuick('year',true,this)">Año</button>
+    </div>
+  </div>
+  <div class="filter-sep"></div>
+  <!-- Custom range -->
+  <div class="filter-group">
+    <label>Desde</label>
+    <input type="date" id="filterDesde" class="filter-input">
+  </div>
+  <div class="filter-group">
+    <label>Hasta</label>
+    <input type="date" id="filterHasta" class="filter-input">
+  </div>
+  <div class="filter-sep"></div>
+  <!-- Cross filters -->
+  <div class="filter-group">
+    <label>Pestaña</label>
+    <select id="filterPestana" class="filter-input">
+      <option value="">Todas</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Red Social</label>
+    <select id="filterRed" class="filter-input">
+      <option value="">Todas</option>
+      <option>Facebook</option>
+      <option>Instagram</option>
+      <option>TikTok</option>
+      <option>YouTube</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Formato</label>
+    <select id="filterFormato" class="filter-input">
+      <option value="">Todos</option>
+      <option>Video</option>
+      <option>Carrusel</option>
+      <option>Imagen</option>
+      <option>Reel</option>
+      <option>Historia</option>
+    </select>
+  </div>
+  <button class="btn btn-primary" onclick="loadAnalytics()">
+    <svg viewBox="0 0 24 24" style="width:13px;height:13px;" fill="none" stroke="currentColor" stroke-width="2.5">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    Aplicar
+  </button>
+</div>
+
+<!-- Main Content -->
+<div class="main-content" id="reportContent">
+
+  <!-- KPIs -->
+  <div class="section-title" style="margin-bottom:12px;">
+    <svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+    </svg>
+    Resumen General
+  </div>
+  <div class="kpi-grid" id="kpiGrid">
+    <!-- filled by JS -->
+  </div>
+
+  <!-- Charts Row 1 -->
+  <div class="charts-grid">
+    <div class="chart-card full-width">
+      <div class="chart-title">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Evolución en el Tiempo — Likes & Alcance
+      </div>
+      <div class="chart-container tall"><canvas id="chartTimeline"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Rendimiento por Red Social
+      </div>
+      <div class="chart-container"><canvas id="chartRed"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        Distribución por Formato
+      </div>
+      <div class="chart-container"><canvas id="chartFormato"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        Rendimiento por Campaña / Pestaña
+      </div>
+      <div class="chart-container"><canvas id="chartPestana"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+        </svg>
+        Engagement Cruzado (Likes vs Comentarios vs Compartidos)
+      </div>
+      <div class="chart-container"><canvas id="chartEngagement"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Publicaciones por Día (Volumen)
+      </div>
+      <div class="chart-container"><canvas id="chartVolumen"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Top 10 Table -->
+  <div class="section-title">
+    <svg viewBox="0 0 24 24" style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+    </svg>
+    Top Contenidos — Mejores Resultados
+  </div>
+  <div class="table-card">
+    <div class="table-header">
+      <span style="font-weight:700;font-size:0.9rem;">Top 10 por Likes</span>
+      <span style="font-size:0.78rem;color:var(--text-muted);">Clic en una fila para ver detalles y agregar captura</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="data-table" id="topTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Captura</th>
+            <th>Contenido</th>
+            <th>Red / Formato</th>
+            <th>Fecha</th>
+            <th>❤ Likes</th>
+            <th>📡 Alcance</th>
+            <th>💬 Comentarios</th>
+            <th>↗ Compartidos</th>
+            <th>👁 Espectadores</th>
+          </tr>
+        </thead>
+        <tbody id="topTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Detail / Metrics Modal -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Detalle del Contenido</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- PDF Toast -->
+<div class="pdf-toast" id="pdfToast">
+  <div class="spinner" style="width:20px;height:20px;border-width:2px;"></div>
+  <span>Generando PDF, por favor espera...</span>
+</div>
+
+<script>
+// ────────────────────────────────────────────────────────────────────────────
+// GLOBALS
+// ────────────────────────────────────────────────────────────────────────────
+let APP_USER = null;
+let charts = {};
+let currentData = null;
+
+const API = 'api';
+
+async function apiFetch(path, params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  const url = qs ? `${API}/${path}?${qs}` : `${API}/${path}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function apiPost(path, data) {
+  const res = await fetch(`${API}/${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  return res.json();
+}
+
+function fmt(n) {
+  n = parseInt(n) || 0;
+  if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000)    return (n/1000).toFixed(1) + 'K';
+  return n.toLocaleString('es-BO');
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// INIT
+// ────────────────────────────────────────────────────────────────────────────
+(async function init() {
+  // Step 1: Check auth — on failure just redirect, no alert
+  let authOk = false;
+  try {
+    const auth = await fetch('api/auth.php?action=me', { credentials: 'same-origin' });
+    if (auth.ok) {
+      const d = await auth.json();
+      if (d && d.user) { APP_USER = d.user; authOk = true; }
+    }
+  } catch(e) { console.warn('Auth check failed:', e); }
+
+  if (!authOk) {
+    // Show a UI message instead of an alert
+    document.getElementById('loadingScreen').innerHTML = `
+      <div style="text-align:center;padding:40px;">
+        <svg viewBox="0 0 24 24" style="width:48px;height:48px;color:#6366f1;margin:0 auto 16px;display:block;" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <div style="color:#f1f5f9;font-size:1rem;font-weight:700;margin-bottom:8px;">Sesión no iniciada</div>
+        <div style="color:#94a3b8;font-size:0.85rem;margin-bottom:20px;">Debes iniciar sesión primero para acceder a Analytics Pro.</div>
+        <button onclick="window.location.href='dashboard.html'" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;color:white;padding:10px 24px;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer;">
+          Ir al Dashboard
+        </button>
+      </div>`;
+    return;
+  }
+
+  // Step 2: Load pestanas (non-critical — fail silently)
+  try {
+    const tabs = await fetch('api/campos.php?action=pestanas', { credentials: 'same-origin' });
+    if (tabs.ok) {
+      const d = await tabs.json();
+      const sel = document.getElementById('filterPestana');
+      (d.data || []).forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.slug; o.textContent = p.nombre;
+        sel.appendChild(o);
+      });
+    }
+  } catch(e) { console.warn('Could not load pestanas:', e); }
+
+  // Step 3: Set default date and load data
+  setQuick('month', false);
+  document.getElementById('loadingScreen').style.display = 'none';
+  await loadAnalytics();
+})();
+
+
+// ────────────────────────────────────────────────────────────────────────────
+// QUICK DATE PRESETS
+// ────────────────────────────────────────────────────────────────────────────
+function setQuick(range, reload = true, btn = null) {
+  document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  const now   = new Date();
+  const today = now.toISOString().split('T')[0];
+  let desde, hasta = today;
+
+  if (range === 'week') {
+    const d = new Date(now); d.setDate(d.getDate() - 6);
+    desde = d.toISOString().split('T')[0];
+  } else if (range === 'month') {
+    desde = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+  } else if (range === 'last_month') {
+    const d1 = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    const d2 = new Date(now.getFullYear(), now.getMonth(), 0);
+    desde = d1.toISOString().split('T')[0];
+    hasta = d2.toISOString().split('T')[0];
+  } else if (range === 'quarter') {
+    const d = new Date(now); d.setMonth(d.getMonth() - 2); d.setDate(1);
+    desde = d.toISOString().split('T')[0];
+  } else if (range === 'year') {
+    desde = `${now.getFullYear()}-01-01`;
+  }
+
+  document.getElementById('filterDesde').value = desde;
+  document.getElementById('filterHasta').value = hasta;
+  if (reload) loadAnalytics();
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// LOAD & RENDER
+// ────────────────────────────────────────────────────────────────────────────
+async function loadAnalytics() {
+  document.getElementById('loadingScreen').style.display = 'flex';
+  try {
+    const desde   = document.getElementById('filterDesde').value;
+    const hasta   = document.getElementById('filterHasta').value;
+    const pestana = document.getElementById('filterPestana').value;
+    const red     = document.getElementById('filterRed').value;
+    const formato = document.getElementById('filterFormato').value;
+
+    const data = await apiFetch('metricas.php', {
+      action: 'analytics', desde, hasta,
+      ...(pestana ? { pestana } : {}),
+      ...(red     ? { red_social: red } : {}),
+      ...(formato ? { formato } : {})
+    });
+
+    currentData = data;
+
+    // Update period label
+    const opts = { day:'2-digit', month:'short', year:'numeric' };
+    const d1 = new Date(desde+'T12:00:00').toLocaleDateString('es-BO', opts);
+    const d2 = new Date(hasta+'T12:00:00').toLocaleDateString('es-BO', opts);
+    document.getElementById('periodLabel').textContent = `${d1} → ${d2}`;
+
+    renderKPIs(data.totals);
+    renderCharts(data);
+    renderTopTable(data.top_content);
+
+  } catch(e) {
+    console.error(e);
+  } finally {
+    document.getElementById('loadingScreen').style.display = 'none';
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// KPI CARDS
+// ────────────────────────────────────────────────────────────────────────────
+function renderKPIs(totals) {
+  const kpis = [
+    { key:'total_publicaciones', label:'Publicaciones', icon:'<svg viewBox="0 0 24 24" style="width:28px;height:28px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>', cls:'publicaciones' },
+    { key:'total_alcance',       label:'Alcance',       icon:'<svg viewBox="0 0 24 24" style="width:28px;height:28px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6l6 6-6 6"></path><path d="M8 12h15"></path></svg>', cls:'alcance' },
+    { key:'total_likes',         label:'Likes',         icon:'<svg viewBox="0 0 24 24" style="width:28px;height:28px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>', cls:'likes' },
+    { key:'total_comentarios',   label:'Comentarios',   icon:'<svg viewBox="0 0 24 24" style="width:28px;height:28px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>', cls:'coments' },
+    { key:'total_compartidos',   label:'Compartidos',   icon:'<svg viewBox="0 0 24 24" style="width:28px;height:28px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>', cls:'compartidos' },
+    { key:'total_guardados',     label:'Guardados',     icon:'<svg viewBox="0 0 24 24" style="width:28px;height:28px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>', cls:'guardados' },
+    { key:'total_clics',         label:'Clics',         icon:'<svg viewBox="0 0 24 24" style="width:28px;height:28px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3z"></path></svg>', cls:'clics' },
+    { key:'total_espectadores',  label:'Espectadores',  icon:'<svg viewBox="0 0 24 24" style="width:28px;height:28px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>', cls:'espectadores' },
+  ];
+  document.getElementById('kpiGrid').innerHTML = kpis.map(k => `
+    <div class="kpi-card ${k.cls} fade-in">
+      <div class="kpi-icon">${k.icon}</div>
+      <div class="kpi-value">${fmt(totals?.[k.key] || 0)}</div>
+      <div class="kpi-label">${k.label}</div>
+    </div>
+  `).join('');
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// CHART.JS HELPERS
+// ────────────────────────────────────────────────────────────────────────────
+const CHART_DEFAULTS = {
+  plugins: {
+    legend: {
+      labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 }, boxWidth: 12, padding: 14 }
+    },
+    tooltip: {
+      backgroundColor: '#161630', borderColor: 'rgba(255,255,255,0.08)', borderWidth: 1,
+      titleColor: '#f1f5f9', bodyColor: '#94a3b8',
+      titleFont: { family: 'Inter', weight: 'bold' }, bodyFont: { family: 'Inter' },
+      padding: 10, displayColors: true, mode: 'index', intersect: false,
+    }
+  },
+  scales: {
+    x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b', font: { family:'Inter', size:11 } } },
+    y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b', font: { family:'Inter', size:11 }, callback: v => fmt(v) } }
+  }
+};
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function renderCharts(data) {
+  // 1. Timeline (Likes + Alcance over time)
+  destroyChart('timeline');
+  const tlLabels = (data.time_series||[]).map(r => r.fecha);
+  const tlLikes  = (data.time_series||[]).map(r => parseInt(r.likes)||0);
+  const tlAlcance= (data.time_series||[]).map(r => parseInt(r.alcance)||0);
+  charts.timeline = new Chart(document.getElementById('chartTimeline'), {
+    type: 'line',
+    data: {
+      labels: tlLabels,
+      datasets: [
+        {
+          label: 'Likes', data: tlLikes,
+          borderColor: '#f43f5e', backgroundColor: 'rgba(244,63,94,0.08)',
+          borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#f43f5e', fill: true, tension: 0.4
+        },
+        {
+          label: 'Alcance', data: tlAlcance,
+          borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.08)',
+          borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#6366f1', fill: true, tension: 0.4
+        }
+      ]
+    },
+    options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false }
+  });
+
+  // 2. By Red Social (bar grouped)
+  destroyChart('red');
+  const redLabels = (data.by_red||[]).map(r => r.red_social || 'Sin red');
+  charts.red = new Chart(document.getElementById('chartRed'), {
+    type: 'bar',
+    data: {
+      labels: redLabels,
+      datasets: [
+        { label: 'Likes',     data: (data.by_red||[]).map(r => parseInt(r.likes)||0),     backgroundColor: 'rgba(244,63,94,0.75)', borderRadius: 5 },
+        { label: 'Comentarios',data: (data.by_red||[]).map(r => parseInt(r.comentarios)||0),backgroundColor: 'rgba(245,158,11,0.75)',borderRadius: 5 },
+        { label: 'Compartidos',data: (data.by_red||[]).map(r => parseInt(r.compartidos)||0),backgroundColor:'rgba(16,185,129,0.75)',borderRadius: 5 },
+        { label: 'Alcance',   data: (data.by_red||[]).map(r => parseInt(r.alcance)||0),   backgroundColor: 'rgba(99,102,241,0.75)', borderRadius: 5 },
+      ]
+    },
+    options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
+      plugins: { ...CHART_DEFAULTS.plugins },
+      scales: { ...CHART_DEFAULTS.scales }
+    }
+  });
+
+  // 3. By Formato (donut)
+  destroyChart('formato');
+  const fmtLabels = (data.by_formato||[]).map(r => r.formato || 'Sin formato');
+  const fmtColors = ['#6366f1','#f43f5e','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899'];
+  charts.formato = new Chart(document.getElementById('chartFormato'), {
+    type: 'doughnut',
+    data: {
+      labels: fmtLabels,
+      datasets: [{
+        data: (data.by_formato||[]).map(r => parseInt(r.publicaciones)||0),
+        backgroundColor: fmtColors.slice(0, fmtLabels.length),
+        borderColor: '#161630', borderWidth: 3, hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font:{family:'Inter',size:11}, boxWidth:12, padding:10 } },
+        tooltip: { ...CHART_DEFAULTS.plugins.tooltip }
+      },
+      cutout: '60%'
+    }
+  });
+
+  // 4. By Pestana (horizontal bar)
+  destroyChart('pestana');
+  const pestLabels = (data.by_pestana||[]).map(r => r.pestana);
+  const pestColors = (data.by_pestana||[]).map(r => r.color || '#6366f1');
+  charts.pestana = new Chart(document.getElementById('chartPestana'), {
+    type: 'bar',
+    data: {
+      labels: pestLabels,
+      datasets: [
+        { label: 'Likes',  data: (data.by_pestana||[]).map(r => parseInt(r.likes)||0),  backgroundColor: pestColors.map(c=>c+'bb'), borderRadius:4 },
+        { label: 'Alcance',data: (data.by_pestana||[]).map(r => parseInt(r.alcance)||0),backgroundColor:'rgba(99,102,241,0.4)',borderRadius:4 },
+      ]
+    },
+    options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
+      indexAxis: 'y',
+      scales: {
+        x: { ...CHART_DEFAULTS.scales.x },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#94a3b8', font:{family:'Inter',size:11} } }
+      }
+    }
+  });
+
+  // 5. Engagement cross (radar or grouped)
+  destroyChart('engagement');
+  const engLabels = (data.by_red||[]).map(r => r.red_social || 'Sin red');
+  charts.engagement = new Chart(document.getElementById('chartEngagement'), {
+    type: 'radar',
+    data: {
+      labels: ['Likes','Comentarios','Compartidos','Guardados','Clics'],
+      datasets: (data.by_red||[]).slice(0,4).map((r,i) => ({
+        label: r.red_social || 'Sin red',
+        data: [r.likes,r.comentarios,r.compartidos,r.guardados||0,r.clics].map(v=>parseInt(v)||0),
+        borderColor: fmtColors[i], backgroundColor: fmtColors[i]+'22',
+        pointBackgroundColor: fmtColors[i], borderWidth: 2, pointRadius: 3
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color:'#94a3b8',font:{family:'Inter',size:11},boxWidth:12 } },
+        tooltip: { ...CHART_DEFAULTS.plugins.tooltip }
+      },
+      scales: {
+        r: {
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          angleLines: { color: 'rgba(255,255,255,0.06)' },
+          ticks: { color:'#64748b', font:{family:'Inter',size:9}, backdropColor:'transparent', callback: v => fmt(v) },
+          pointLabels: { color:'#94a3b8', font:{family:'Inter',size:11} }
+        }
+      }
+    }
+  });
+
+  // 6. Volume per day (bar)
+  destroyChart('volumen');
+  charts.volumen = new Chart(document.getElementById('chartVolumen'), {
+    type: 'bar',
+    data: {
+      labels: tlLabels,
+      datasets: [{
+        label: 'Publicaciones',
+        data: (data.time_series||[]).map(r => parseInt(r.publicaciones)||0),
+        backgroundColor: 'rgba(99,102,241,0.6)', borderRadius: 4,
+        hoverBackgroundColor: 'rgba(99,102,241,0.85)'
+      }]
+    },
+    options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false }
+  });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// TOP TABLE
+// ────────────────────────────────────────────────────────────────────────────
+function getSocialColor(red) {
+  const map = { Facebook:'rgba(59,130,246,0.15)', Instagram:'rgba(236,72,153,0.15)', TikTok:'rgba(255,255,255,0.08)', YouTube:'rgba(239,68,68,0.15)' };
+  return map[red] || 'rgba(99,102,241,0.12)';
+}
+function getSocialTextColor(red) {
+  const map = { Facebook:'#93c5fd', Instagram:'#f9a8d4', TikTok:'#e2e8f0', YouTube:'#fca5a5' };
+  return map[red] || '#a5b4fc';
+}
+
+function renderTopTable(rows) {
+  const tbody = document.getElementById('topTableBody');
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state">
+      <h3>Sin datos en este período</h3>
+      <p>No hay contenidos publicados con métricas registradas en el rango seleccionado.</p>
+    </div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map((r, i) => {
+    const rank = i < 3 ? `<span class="rank-badge rank-${i+1}">${i+1}</span>` : `<span class="rank-badge rank-other">${i+1}</span>`;
+    const captura = r.captura_url
+      ? `<img src="${escHtml(r.captura_url)}" class="captura-thumb" alt="captura">`
+      : `<div class="no-captura">Sin<br>captura</div>`;
+    const socialBg  = getSocialColor(r.red_social);
+    const socialClr = getSocialTextColor(r.red_social);
+    return `<tr onclick="openDetail(${r.id})">
+      <td>${rank}</td>
+      <td>${captura}</td>
+      <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(r.tema)}">${escHtml(r.tema||'Sin tema')}</td>
+      <td>
+        <span class="social-pill" style="background:${socialBg};color:${socialClr};">${escHtml(r.red_social||'—')}</span>
+        <br><small style="color:var(--text-muted);font-size:0.66rem;">${escHtml(r.formato||'—')}</small>
+      </td>
+      <td style="color:var(--text-secondary);white-space:nowrap;">${r.fecha || '—'}</td>
+      <td><span class="metric-badge badge-like"><svg class="svg-icon" viewBox="0 0 24 24" style="width:11px;height:11px;"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg> ${fmt(r.likes)}</span></td>
+      <td><span class="metric-badge badge-reach"><svg class="svg-icon" viewBox="0 0 24 24" style="width:11px;height:11px;"><path d="M1 6l6 6-6 6"></path><path d="M8 12h15"></path></svg> ${fmt(r.alcance)}</span></td>
+      <td><span class="metric-badge badge-comment"><svg class="svg-icon" viewBox="0 0 24 24" style="width:11px;height:11px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> ${fmt(r.comentarios)}</span></td>
+      <td style="color:var(--text-secondary);">${fmt(r.compartidos)}</td>
+      <td style="color:var(--text-secondary);">${fmt(r.espectadores)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// DETAIL MODAL
+// ────────────────────────────────────────────────────────────────────────────
+let detailContentId = null;
+
+async function openDetail(id) {
+  detailContentId = id;
+  document.getElementById('detailModal').classList.add('open');
+  document.getElementById('modalBody').innerHTML = '<div style="text-align:center;padding:40px;"><div class="spinner" style="margin:0 auto;"></div></div>';
+
+  try {
+    // Get content data
+    const row = currentData?.top_content?.find(r => r.id == id);
+    // Get current metrics
+    const metRes = await apiFetch('metricas.php', { action:'get', contenido_id: id });
+    const met = metRes.data?.[0] || {};
+    // Get captura
+    let capturaUrl = null;
+    try { const cap = await apiFetch('metricas.php', {action:'get_captura', contenido_id:id}); capturaUrl = cap.url; } catch(e){}
+
+    document.getElementById('modalTitle').textContent = row?.tema || 'Detalle del Contenido';
+    document.getElementById('modalBody').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div>
+          <div class="section-title" style="margin-bottom:10px;"><svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Captura del Post Publicado</div>
+          <div class="captura-zone" id="capturaZone" 
+            ondragover="event.preventDefault();this.classList.add('dragover')"
+            ondragleave="this.classList.remove('dragover')"
+            ondrop="handleCapturaDrop(event)"
+            onclick="document.getElementById('capturaFileInput').click()"
+            title="Clic para subir o arrastra una captura. También puedes pegar con Ctrl+V">
+            ${capturaUrl
+              ? `<img src="${escHtml(capturaUrl)}" class="captura-preview" id="capturaPreview" alt="Captura del post">`
+              : `<div>
+                  <svg viewBox="0 0 24 24" style="width:36px;height:36px;color:var(--text-muted);margin:0 auto 8px;display:block;" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                  </svg>
+                  <div style="color:var(--text-secondary);font-size:0.82rem;font-weight:600;">Agregar captura del post</div>
+                  <div style="color:var(--text-muted);font-size:0.72rem;margin-top:4px;">Clic, arrastra o pega (Ctrl+V)</div>
+                </div>`
+            }
+          </div>
+          <input type="file" id="capturaFileInput" accept="image/*" style="display:none" onchange="handleCapturaFile(event)">
+          ${capturaUrl ? `<button class="btn btn-danger" style="width:100%;margin-top:6px;font-size:0.75rem;" onclick="saveCaptura(null)"><svg class="svg-icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2-2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Quitar captura</button>` : ''}
+        </div>
+        <div>
+          <div class="section-title" style="margin-bottom:10px;"><svg class="svg-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg> Métricas</div>
+          <div class="metrics-form" id="metricsForm">
+            ${['espectadores','likes','comentarios','compartidos','guardados','alcance','clics'].map(f => `
+              <div class="form-group">
+                <label>${f.charAt(0).toUpperCase()+f.slice(1)}</label>
+                <input type="number" class="form-control" id="met_${f}" value="${met[f]||0}" min="0">
+              </div>
+            `).join('')}
+          </div>
+          <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="saveMetrics(${id})">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Guardar Métricas
+          </button>
+        </div>
+      </div>
+      ${row ? `
+      <div class="section-title" style="margin-bottom:10px;"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Info del Contenido</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:0.82rem;">
+        <div style="background:var(--bg-glass);border-radius:8px;padding:10px;">
+          <div style="color:var(--text-muted);font-size:0.68rem;text-transform:uppercase;">Red Social</div>
+          <div style="font-weight:600;margin-top:2px;">${escHtml(row.red_social||'—')}</div>
+        </div>
+        <div style="background:var(--bg-glass);border-radius:8px;padding:10px;">
+          <div style="color:var(--text-muted);font-size:0.68rem;text-transform:uppercase;">Formato</div>
+          <div style="font-weight:600;margin-top:2px;">${escHtml(row.formato||'—')}</div>
+        </div>
+        <div style="background:var(--bg-glass);border-radius:8px;padding:10px;">
+          <div style="color:var(--text-muted);font-size:0.68rem;text-transform:uppercase;">Fecha</div>
+          <div style="font-weight:600;margin-top:2px;">${row.fecha||'—'}</div>
+        </div>
+        ${row.enlace_publicado ? `
+        <div style="background:var(--bg-glass);border-radius:8px;padding:10px;grid-column:1/-1;">
+          <div style="color:var(--text-muted);font-size:0.68rem;text-transform:uppercase;">Enlace publicado</div>
+          <a href="${escHtml(row.enlace_publicado)}" target="_blank" style="color:var(--accent);font-size:0.82rem;word-break:break-all;">${escHtml(row.enlace_publicado)}</a>
+        </div>` : ''}
+      </div>` : ''}
+    `;
+
+    // Paste from clipboard
+    document.addEventListener('paste', handleCapturaPaste);
+  } catch(e) {
+    document.getElementById('modalBody').innerHTML = `<div class="empty-state"><p>Error cargando datos: ${e.message}</p></div>`;
+  }
+}
+
+function closeModal() {
+  document.getElementById('detailModal').classList.remove('open');
+  document.removeEventListener('paste', handleCapturaPaste);
+  detailContentId = null;
+}
+
+async function saveMetrics(id) {
+  const fields = ['espectadores','likes','comentarios','compartidos','guardados','alcance','clics'];
+  const data = { contenido_id: id };
+  fields.forEach(f => { data[f] = parseInt(document.getElementById('met_'+f)?.value)||0; });
+  const res = await apiPost('metricas.php?action=save', data);
+  if (res.success) {
+    showToast('Métricas guardadas', 'success');
+    await loadAnalytics();
+  }
+}
+
+// ── Captura upload ─────────────────────────────────────────────────────────
+function handleCapturaDrop(e) {
+  e.preventDefault();
+  document.getElementById('capturaZone').classList.remove('dragover');
+  const file = e.dataTransfer.files?.[0];
+  if (file && file.type.startsWith('image/')) readAndUploadCaptura(file);
+}
+function handleCapturaFile(e) {
+  const file = e.target.files?.[0];
+  if (file) readAndUploadCaptura(file);
+}
+function handleCapturaPaste(e) {
+  if (!detailContentId) return;
+  const items = e.clipboardData?.items || [];
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      readAndUploadCaptura(item.getAsFile());
+      return;
+    }
+  }
+}
+function readAndUploadCaptura(file) {
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    const dataUrl = ev.target.result;
+    // Show preview immediately
+    const zone = document.getElementById('capturaZone');
+    if (zone) zone.innerHTML = `<img src="${dataUrl}" class="captura-preview" alt="captura">`;
+    await saveCaptura(dataUrl);
+  };
+  reader.readAsDataURL(file);
+}
+async function saveCaptura(dataUrl) {
+  if (!detailContentId) return;
+  const res = await apiPost('metricas.php?action=save_captura', {
+    contenido_id: detailContentId,
+    image_data: dataUrl || ''
+  });
+  if (res.success) {
+    showToast('Captura guardada', 'success');
+    await loadAnalytics();
+  } else {
+    showToast('Error guardando captura', 'error');
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// PDF EXPORT
+// ────────────────────────────────────────────────────────────────────────────
+async function exportPDF() {
+  const toast = document.getElementById('pdfToast');
+  toast.classList.add('show');
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+    const W = pdf.internal.pageSize.getWidth();
+    const H = pdf.internal.pageSize.getHeight();
+
+    // ── Page 1: Header + KPIs ──────────────────────────────────────────
+    // Gradient header
+    pdf.setFillColor(30, 27, 75);
+    pdf.rect(0, 0, W, 28, 'F');
+    pdf.setFillColor(99, 102, 241);
+    pdf.rect(0, 0, 5, 28, 'F');
+    pdf.setFont('helvetica','bold');
+    pdf.setFontSize(16); pdf.setTextColor(255,255,255);
+    pdf.text('UNIFRANZ Online — Analytics Pro', 12, 12);
+    pdf.setFontSize(9); pdf.setTextColor(148,163,184);
+    pdf.text(document.getElementById('periodLabel').textContent, 12, 20);
+    pdf.setFontSize(8); pdf.setTextColor(100,116,139);
+    const now = new Date().toLocaleDateString('es-BO',{day:'2-digit',month:'long',year:'numeric'});
+    pdf.text(`Generado el ${now}`, W-12, 20, {align:'right'});
+
+    // KPIs
+    const tot = currentData?.totals || {};
+    const kpiItems = [
+      {l:'Publicaciones',v:fmt(tot.total_publicaciones)},
+      {l:'Alcance',v:fmt(tot.total_alcance)},
+      {l:'Likes',v:fmt(tot.total_likes)},
+      {l:'Comentarios',v:fmt(tot.total_comentarios)},
+      {l:'Compartidos',v:fmt(tot.total_compartidos)},
+      {l:'Guardados',v:fmt(tot.total_guardados)},
+      {l:'Clics',v:fmt(tot.total_clics)},
+      {l:'Espectadores',v:fmt(tot.total_espectadores)},
+    ];
+    const colW = (W-16) / 4;
+    kpiItems.forEach((k,i) => {
+      const col = i % 4; const row = Math.floor(i/4);
+      const x = 8 + col*colW; const y = 34 + row*24;
+      pdf.setFillColor(22,22,48);
+      pdf.roundedRect(x, y, colW-3, 20, 2, 2, 'F');
+      pdf.setFontSize(14); pdf.setTextColor(241,245,249); pdf.setFont('helvetica','bold');
+      pdf.text(k.v, x+4, y+12);
+      pdf.setFontSize(7); pdf.setTextColor(100,116,139); pdf.setFont('helvetica','normal');
+      pdf.text(k.l.toUpperCase(), x+4, y+18);
+    });
+
+    // ── Page 2: Charts ──────────────────────────────────────────────────
+    const addChartPage = async (canvasId, title, options = {}) => {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const img = await html2canvas(canvas.parentElement, { backgroundColor:'#161630', scale:2 });
+      const imgData = img.toDataURL('image/png');
+      pdf.addPage();
+      // Header
+      pdf.setFillColor(22,22,48);
+      pdf.rect(0,0,W,16,'F');
+      pdf.setFontSize(10); pdf.setTextColor(241,245,249); pdf.setFont('helvetica','bold');
+      pdf.text(title, 8, 10);
+      // Chart image
+      const cW = options.fullWidth ? W-16 : (W-20)/2;
+      const cH = 90;
+      const cX = options.x !== undefined ? options.x : 8;
+      const cY = 20;
+      pdf.addImage(imgData, 'PNG', cX, cY, cW, cH, undefined, 'FAST');
+    };
+
+    // Charts page (timeline)
+    const tlCanvas = document.getElementById('chartTimeline');
+    if (tlCanvas) {
+      const img = await html2canvas(tlCanvas.parentElement, {backgroundColor:'#161630',scale:2});
+      const imgData = img.toDataURL('image/png');
+      const imgProps = pdf.getImageProperties(imgData);
+      
+      pdf.addPage();
+      pdf.setFillColor(22,22,48); pdf.rect(0,0,W,16,'F');
+      pdf.setFontSize(10); pdf.setTextColor(241,245,249); pdf.setFont('helvetica','bold');
+      pdf.text('Evolución en el Tiempo — Likes & Alcance', 8, 10);
+      
+      const cW = W-16;
+      const cH = (imgProps.height * cW) / imgProps.width;
+      pdf.addImage(imgData,'PNG', 8, 20, cW, cH, undefined, 'FAST');
+    }
+
+    // 2-column charts page
+    const pairs = [
+      ['chartRed','Por Red Social'],['chartFormato','Por Formato'],
+      ['chartPestana','Por Campaña'],['chartEngagement','Engagement Cruzado'],
+    ];
+    pdf.addPage();
+    pdf.setFillColor(22,22,48); pdf.rect(0,0,W,16,'F');
+    pdf.setFontSize(10); pdf.setTextColor(241,245,249); pdf.setFont('helvetica','bold');
+    pdf.text('Análisis por Dimensiones', 8, 10);
+    for (let i=0; i<pairs.length; i++) {
+      const [cId, cTitle] = pairs[i];
+      const canvas = document.getElementById(cId);
+      if (!canvas) continue;
+      
+      const img = await html2canvas(canvas.parentElement, {backgroundColor:'#161630',scale:1.5});
+      const imgData = img.toDataURL('image/png');
+      const imgProps = pdf.getImageProperties(imgData);
+      
+      const col = i % 2; 
+      const row = Math.floor(i/2);
+      const cW = (W-20)/2;
+      const x = 8 + col*(cW+4);
+      // We know 2 rows will be printed. The height might be approx 60-80mm. 
+      // y needs to step enough so row 2 doesn't overlap row 1
+      const cH = (imgProps.height * cW) / imgProps.width;
+      const y = 20 + row * (cH + 10); // Dynamically space based on the calculated height of the chart plus some padding
+      
+      pdf.setFontSize(7); pdf.setTextColor(148,163,184);
+      pdf.text(cTitle, x, y-1);
+      pdf.addImage(imgData,'PNG', x, y, cW, cH, undefined, 'FAST');
+    }
+
+    // ── Page: Top Table ─────────────────────────────────────────────────
+    pdf.addPage();
+    pdf.setFillColor(22,22,48); pdf.rect(0,0,W,16,'F');
+    pdf.setFontSize(10); pdf.setTextColor(241,245,249); pdf.setFont('helvetica','bold');
+    pdf.text('Top Contenidos por Likes', 8, 10);
+
+    const rows = currentData?.top_content || [];
+    const headers = ['#','Tema','Red Social','Formato','Fecha','Likes','Alcance','Comentarios'];
+    const colWidths = [8,70,24,20,20,16,18,20];
+    let ty = 22;
+    pdf.setFontSize(7); pdf.setFont('helvetica','bold');
+    pdf.setFillColor(30,27,75);
+    pdf.rect(8, ty-4, W-16, 8, 'F');
+    pdf.setTextColor(148,163,184);
+    let tx = 8;
+    headers.forEach((h,i) => { pdf.text(h, tx+1, ty); tx += colWidths[i]; });
+    ty += 6;
+    pdf.setFont('helvetica','normal');
+    rows.forEach((r,ri) => {
+      if (ri % 2 === 0) { pdf.setFillColor(22,22,48); pdf.rect(8,ty-4,W-16,7,'F'); }
+      pdf.setTextColor(ri===0?241:ri===1?200:ri===2?180:148, ri===0?245:ri===1?200:ri===2?180:163, ri===0?249:ri===1?200:ri===2?180:184);
+      let cx = 8;
+      const cells = [`${ri+1}`, r.tema?.substring(0,38)||'—', r.red_social||'—', r.formato||'—', r.fecha||'—', fmt(r.likes), fmt(r.alcance), fmt(r.comentarios)];
+      cells.forEach((c,i) => { pdf.text(String(c), cx+1, ty); cx += colWidths[i]; });
+      ty += 7;
+      if (ty > H-10) { pdf.addPage(); ty = 16; }
+    });
+
+    const desde = document.getElementById('filterDesde').value;
+    const hasta = document.getElementById('filterHasta').value;
+    pdf.save(`unifranz-analytics-${desde}-${hasta}.pdf`);
+    showToast('PDF exportado exitosamente', 'success');
+  } catch(e) {
+    console.error(e);
+    showToast('Error al exportar PDF', 'error');
+  } finally {
+    toast.classList.remove('show');
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// TOAST
+// ────────────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type='info') {
+  clearTimeout(toastTimer);
+  let el = document.getElementById('appToast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'appToast';
+    el.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+      background:var(--bg-card);border:1px solid var(--border);border-radius:10px;
+      padding:10px 20px;font-size:0.85rem;z-index:99999;box-shadow:var(--shadow);
+      transition:all 0.3s;opacity:0;`;
+    document.body.appendChild(el);
+  }
+  const colors = { success:'#10b981', error:'#ef4444', info:'#6366f1' };
+  el.style.borderLeftColor = colors[type]||colors.info;
+  el.style.borderLeftWidth = '3px';
+  el.textContent = msg;
+  el.style.opacity = '1';
+  toastTimer = setTimeout(() => { el.style.opacity = '0'; }, 3000);
+}
+</script>
+</body>
+</html>
+
