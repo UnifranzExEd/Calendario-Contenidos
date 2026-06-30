@@ -1577,8 +1577,9 @@ function assignSelfPP() {
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════
 // COPY TEXT
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════
 function copyText(elementId) {
     const el = document.getElementById(elementId);
     if (!el) return;
@@ -1597,9 +1598,222 @@ function copyText(elementId) {
     });
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════
+// SMART CONTEXT MENU
+// ══════════════════════════════════════════
+let currentContextId = null;
+
+// Estado colors map
+const ESTADO_COLORS = {
+    'En elaboración': '#6b7280',
+    'Redacción':      '#f59e0b',
+    'En revisión':    '#3b82f6',
+    'Producción':     '#8b5cf6',
+    'Corrección':     '#ef4444',
+    'Aprobado':       '#10b981',
+    'Programado':     '#06b6d4',
+    'Publicado':      '#22c55e',
+};
+
+function buildSmartContextMenu(item) {
+    const isAdmin   = APP_USER && APP_USER.rol === 'admin';
+    const isCommunity = APP_USER && APP_USER.rol === 'community';
+    const estadoActual = item ? item.estado : '';
+    const hasDesign = item && item.enlace_diseno;
+    const hasLink   = item && (item.enlace_contenido || item.enlace_publicado);
+    const isSent    = item && item.enviar_postproduccion == 1;
+    const titulo    = item ? (item.tema || 'Sin título').substring(0, 30) : '';
+
+    // Build estado submenu items (all states the user can change to)
+    const ESTADOS = ['En elaboración','Redacción','En revisión','Producción','Corrección','Aprobado','Programado','Publicado'];
+    const estadoItems = ESTADOS
+        .filter(e => e !== estadoActual)
+        .map(e => `
+            <div class="cm-item cm-sub-item" onclick="handleContext('estado:${e}')">
+                <span style="width:8px;height:8px;border-radius:50%;background:${ESTADO_COLORS[e] || '#6b7280'};flex-shrink:0;display:inline-block;"></span>
+                ${e}
+            </div>`)
+        .join('');
+
+    return `
+        <!-- Header: item title -->
+        <div class="cm-header">
+            <svg class="svg-icon" viewBox="0 0 24 24" style="width:12px;height:12px;opacity:0.6"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>
+            <span>${escHtml(titulo)}${titulo.length >= 30 ? '…' : ''}</span>
+        </div>
+        <div class="cm-separator"></div>
+
+        <!-- Primary actions -->
+        <div class="cm-item" onclick="handleContext('edit')">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+            Editar
+            <span class="cm-hint">Doble clic</span>
+        </div>
+        <div class="cm-item" onclick="handleContext('duplicate')">
+            <svg class="svg-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Duplicar
+        </div>
+        <div class="cm-item" onclick="handleContext('recorrer')">
+            <svg class="svg-icon" viewBox="0 0 24 24"><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg>
+            Mover +1 día
+        </div>
+
+        <!-- Estado submenu -->
+        <div class="cm-separator"></div>
+        <div class="cm-item cm-has-sub" id="cmSubEstadoTrigger">
+            <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            Cambiar Estado
+            <svg viewBox="0 0 24 24" style="width:12px;height:12px;margin-left:auto;opacity:0.5" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </div>
+        <div class="cm-submenu" id="cmSubEstado">
+            ${estadoItems || '<div class="cm-item" style="opacity:0.4;cursor:default">Sin más estados</div>'}
+        </div>
+
+        <!-- Links section -->
+        ${hasLink || hasDesign ? `<div class="cm-separator"></div>` : ''}
+        ${hasLink ? `
+        <div class="cm-item" onclick="handleContext('openLink')">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            Abrir Enlace Publicado
+        </div>` : ''}
+        ${hasDesign ? `
+        <div class="cm-item" onclick="handleContext('openDesign')">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7.71 3.5L1.15 15l3.43 6 6.55-11.5M9.73 15L6.3 21h13.12l3.43-6M12.27 3.5L15.7 9.5H2.57L6 3.5z"/></svg>
+            Abrir Diseño (Drive)
+        </div>` : ''}
+
+        <!-- PP toggle -->
+        ${!isCommunity ? `
+        <div class="cm-separator"></div>
+        <div class="cm-item" onclick="handleContext('togglePP')">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            ${isSent ? 'Quitar de Post-Producción' : 'Enviar a Post-Producción'}
+        </div>` : ''}
+
+        <!-- Danger zone -->
+        <div class="cm-separator"></div>
+        ${isAdmin ? `
+        <div class="cm-item danger" onclick="handleContext('delete')">
+            <svg class="svg-icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            Eliminar
+        </div>` : ''}
+    `;
+}
+
+function showContextMenu(e, id) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Remove any existing menu
+    const existing = document.getElementById('rowContextMenu');
+    if (existing) existing.remove();
+
+    currentContextId = id;
+    const item = state.contenidos.find(c => c.id == id);
+
+    const cm = document.createElement('div');
+    cm.id = 'rowContextMenu';
+    cm.className = 'context-menu';
+    cm.innerHTML = buildSmartContextMenu(item);
+    document.body.appendChild(cm);
+
+    // Submenu hover logic
+    const subTrigger = cm.querySelector('#cmSubEstadoTrigger');
+    const subMenu    = cm.querySelector('#cmSubEstado');
+    if (subTrigger && subMenu) {
+        subTrigger.addEventListener('mouseenter', () => subMenu.classList.add('open'));
+        subTrigger.addEventListener('mouseleave', () => {
+            setTimeout(() => { if (!subMenu.matches(':hover')) subMenu.classList.remove('open'); }, 150);
+        });
+        subMenu.addEventListener('mouseleave', () => subMenu.classList.remove('open'));
+    }
+
+    // Position
+    cm.style.display = 'block';
+    const rect = cm.getBoundingClientRect();
+    let x = e.clientX;
+    let y = e.clientY;
+    if (x + rect.width  > window.innerWidth)  x -= rect.width;
+    if (y + rect.height > window.innerHeight) y -= rect.height;
+    cm.style.left = (x + window.scrollX) + 'px';
+    cm.style.top  = (y + window.scrollY) + 'px';
+
+    // Close on outside click
+    const closeMenu = (ev) => {
+        if (!cm.contains(ev.target)) {
+            cm.remove();
+            document.removeEventListener('click', closeMenu);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', closeMenu), 10);
+    window.addEventListener('scroll', () => cm.remove(), { once: true, capture: true });
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') cm.remove(); }, { once: true });
+}
+
+async function handleContext(action) {
+    const cm = document.getElementById('rowContextMenu');
+    if (cm) cm.remove();
+    if (!currentContextId) return;
+
+    const id = currentContextId;
+    currentContextId = null;
+    const item = state.contenidos.find(c => c.id == id);
+
+    if (action === 'edit') {
+        openEditModal(id);
+
+    } else if (action === 'duplicate') {
+        try {
+            await apiPost('contenidos.php?action=duplicate', { id });
+            showToast('Contenido duplicado ✓', 'success');
+            loadContents();
+        } catch (e) { showToast(e.message, 'error'); }
+
+    } else if (action === 'recorrer') {
+        try {
+            await apiPost('contenidos.php?action=shift_date', { id });
+            showToast('Fecha movida +1 día', 'success');
+            loadContents();
+        } catch (e) { showToast(e.message, 'error'); }
+
+    } else if (action.startsWith('estado:')) {
+        const nuevoEstado = action.replace('estado:', '');
+        try {
+            await apiPost('contenidos.php?action=inline', { id, field: 'estado', value: nuevoEstado });
+            showToast(`Estado → ${nuevoEstado}`, 'success');
+            loadContents();
+        } catch (e) { showToast(e.message, 'error'); }
+
+    } else if (action === 'togglePP') {
+        const newVal = (item && item.enviar_postproduccion == 1) ? 0 : 1;
+        try {
+            await apiPost('contenidos.php?action=inline', { id, field: 'enviar_postproduccion', value: newVal });
+            showToast(newVal ? 'Enviado a Post-Producción ✓' : 'Quitado de Post-Producción', 'success');
+            loadContents();
+        } catch (e) { showToast(e.message, 'error'); }
+
+    } else if (action === 'openLink') {
+        const url = item && (item.enlace_publicado || item.enlace_contenido);
+        if (url) window.open(url, '_blank');
+
+    } else if (action === 'openDesign') {
+        if (item && item.enlace_diseno) window.open(item.enlace_diseno, '_blank');
+
+    } else if (action === 'delete') {
+        if (!APP_USER || APP_USER.rol !== 'admin') return;
+        const ok = await customConfirm('¿Eliminar este contenido? Esta acción no se puede deshacer.');
+        if (!ok) return;
+        try {
+            await apiPost('contenidos.php?action=delete', { id });
+            showToast('Contenido eliminado', 'success');
+            loadContents();
+        } catch (e) { showToast(e.message, 'error'); }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // CUSTOM DIALOGS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════
 function customPrompt(title, defaultValue = '', type = 'text') {
     return new Promise(resolve => {
         const overlay = document.createElement('div');
@@ -1696,12 +1910,6 @@ function customConfirm(message) {
     });
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// CONTEXT MENU
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-let currentContextId = null;
-
-function initContextMenu() {
     let cm = document.getElementById('rowContextMenu');
     if (!cm) {
         cm = document.createElement('div');
