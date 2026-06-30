@@ -2005,6 +2005,7 @@ function initContextMenu() {
 
 function showContextMenu(e, id) {
     e.preventDefault();
+    e.stopPropagation();
     initContextMenu();
     currentContextId = id;
     const cm = document.getElementById('rowContextMenu');
