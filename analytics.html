@@ -20,8 +20,8 @@
   --bg-hover:     rgba(255,255,255,0.07);
   --border:       rgba(255,255,255,0.08);
   --border-light: rgba(255,255,255,0.14);
-  --accent:       #6366f1;
-  --accent2:      #8b5cf6;
+  --accent:       #e53935;
+  --accent2:      #b71c1c;
   --success:      #10b981;
   --warning:      #f59e0b;
   --danger:       #ef4444;
@@ -55,10 +55,10 @@ body {
 .header-brand {
   display: flex; align-items: center; gap: 10px;
   font-size: 1.1rem; font-weight: 800;
-  background: linear-gradient(135deg,#6366f1,#a855f7);
+  background: linear-gradient(135deg,#e53935,#b71c1c);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
 }
-.header-brand svg { color: #6366f1; -webkit-text-fill-color: initial; }
+.header-brand svg { color: #e53935; -webkit-text-fill-color: initial; }
 .header-title { font-weight: 700; font-size: 1rem; color: var(--text-primary); }
 .header-subtitle { font-size: 0.78rem; color: var(--text-muted); }
 .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
@@ -97,7 +97,7 @@ body {
   font-size: 0.82rem; font-weight: 600; font-family: inherit;
   cursor: pointer; border: none; transition: var(--transition);
 }
-.btn-primary { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: white; }
+.btn-primary { background: linear-gradient(135deg,#e53935,#b71c1c); color: white; }
 .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
 .btn-secondary { background: var(--bg-glass); border: 1px solid var(--border); color: var(--text-secondary); }
 .btn-secondary:hover { border-color: var(--border-light); color: var(--text-primary); background: var(--bg-hover); }
@@ -117,7 +117,7 @@ body {
 .spinner {
   width: 36px; height: 36px;
   border: 3px solid rgba(99,102,241,0.2);
-  border-top-color: #6366f1;
+  border-top-color: #e53935;
   border-radius: 50%; animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -141,21 +141,21 @@ body {
   height: 2px;
 }
 .kpi-card.likes::before    { background: linear-gradient(90deg,#f43f5e,#ec4899); }
-.kpi-card.alcance::before  { background: linear-gradient(90deg,#6366f1,#8b5cf6); }
+.kpi-card.alcance::before  { background: linear-gradient(90deg,#e53935,#b71c1c); }
 .kpi-card.coments::before  { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
 .kpi-card.compartidos::before { background: linear-gradient(90deg,#10b981,#34d399); }
 .kpi-card.guardados::before{ background: linear-gradient(90deg,#3b82f6,#60a5fa); }
-.kpi-card.clics::before    { background: linear-gradient(90deg,#8b5cf6,#c084fc); }
+.kpi-card.clics::before    { background: linear-gradient(90deg,#ef5350,#e53935); }
 .kpi-card.publicaciones::before { background: linear-gradient(90deg,#06b6d4,#22d3ee); }
 .kpi-card.espectadores::before  { background: linear-gradient(90deg,#f97316,#fb923c); }
 .kpi-card:hover { border-color: var(--border-light); transform: translateY(-2px); box-shadow: var(--shadow); }
 .kpi-icon { font-size: 1.3rem; margin-bottom: 8px; opacity: 0.9; }
 .kpi-card.likes .kpi-icon         { color: #ec4899; }
-.kpi-card.alcance .kpi-icon       { color: #8b5cf6; }
+.kpi-card.alcance .kpi-icon       { color: #b71c1c; }
 .kpi-card.coments .kpi-icon       { color: #fbbf24; }
 .kpi-card.compartidos .kpi-icon   { color: #34d399; }
 .kpi-card.guardados .kpi-icon     { color: #60a5fa; }
-.kpi-card.clics .kpi-icon         { color: #a855f7; }
+.kpi-card.clics .kpi-icon         { color: #ef5350; }
 .kpi-card.publicaciones .kpi-icon { color: #22d3ee; }
 .kpi-card.espectadores .kpi-icon  { color: #fb923c; }
 .kpi-value { font-size: 1.7rem; font-weight: 800; color: var(--text-primary); line-height: 1; }
@@ -620,12 +620,12 @@ function escHtml(s) {
     // Show a UI message instead of an alert
     document.getElementById('loadingScreen').innerHTML = `
       <div style="text-align:center;padding:40px;">
-        <svg viewBox="0 0 24 24" style="width:48px;height:48px;color:#6366f1;margin:0 auto 16px;display:block;" fill="none" stroke="currentColor" stroke-width="1.5">
+        <svg viewBox="0 0 24 24" style="width:48px;height:48px;color:#e53935;margin:0 auto 16px;display:block;" fill="none" stroke="currentColor" stroke-width="1.5">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
         <div style="color:#f1f5f9;font-size:1rem;font-weight:700;margin-bottom:8px;">Sesión no iniciada</div>
         <div style="color:#94a3b8;font-size:0.85rem;margin-bottom:20px;">Debes iniciar sesión primero para acceder a Analytics Pro.</div>
-        <button onclick="window.location.href='dashboard.html'" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;color:white;padding:10px 24px;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer;">
+        <button onclick="window.location.href='dashboard.html'" style="background:linear-gradient(135deg,#e53935,#b71c1c);border:none;color:white;padding:10px 24px;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer;">
           Ir al Dashboard
         </button>
       </div>`;
@@ -790,8 +790,8 @@ function renderCharts(data) {
         },
         {
           label: 'Alcance', data: tlAlcance,
-          borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.08)',
-          borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#6366f1', fill: true, tension: 0.4
+          borderColor: '#e53935', backgroundColor: 'rgba(229,57,53,0.08)',
+          borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#e53935', fill: true, tension: 0.4
         }
       ]
     },
@@ -821,7 +821,7 @@ function renderCharts(data) {
   // 3. By Formato (donut)
   destroyChart('formato');
   const fmtLabels = (data.by_formato||[]).map(r => r.formato || 'Sin formato');
-  const fmtColors = ['#6366f1','#f43f5e','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899'];
+  const fmtColors = ['#e53935','#f43f5e','#f59e0b','#10b981','#3b82f6','#b71c1c','#ec4899'];
   charts.formato = new Chart(document.getElementById('chartFormato'), {
     type: 'doughnut',
     data: {
@@ -844,7 +844,7 @@ function renderCharts(data) {
   // 4. By Pestana (horizontal bar)
   destroyChart('pestana');
   const pestLabels = (data.by_pestana||[]).map(r => r.pestana);
-  const pestColors = (data.by_pestana||[]).map(r => r.color || '#6366f1');
+  const pestColors = (data.by_pestana||[]).map(r => r.color || '#e53935');
   charts.pestana = new Chart(document.getElementById('chartPestana'), {
     type: 'bar',
     data: {
@@ -1287,7 +1287,7 @@ function showToast(msg, type='info') {
       transition:all 0.3s;opacity:0;`;
     document.body.appendChild(el);
   }
-  const colors = { success:'#10b981', error:'#ef4444', info:'#6366f1' };
+  const colors = { success:'#10b981', error:'#ef4444', info:'#e53935' };
   el.style.borderLeftColor = colors[type]||colors.info;
   el.style.borderLeftWidth = '3px';
   el.textContent = msg;

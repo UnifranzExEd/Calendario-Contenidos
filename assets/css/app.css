@@ -237,7 +237,7 @@ textarea.form-control {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #e53935, #b71c1c);
     color: white;
     box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
@@ -344,7 +344,7 @@ textarea.form-control {
 .sidebar-header .brand-icon {
     width: 40px;
     height: 40px;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #e53935, #b71c1c);
     border-radius: var(--radius-md);
     display: flex;
     align-items: center;
@@ -502,7 +502,7 @@ textarea.form-control {
     height: 36px;
     flex-shrink: 0;
     border-radius: 50%;
-    background: linear-gradient(135deg, #6366f1, #a855f7);
+    background: linear-gradient(135deg, #e53935, #b71c1c);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -971,7 +971,7 @@ textarea.form-control {
 .badge-revision { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
 .badge-revision .badge-dot { background: #3b82f6; }
 .badge-produccion { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
-.badge-produccion .badge-dot { background: #8b5cf6; }
+.badge-produccion .badge-dot { background: #ef5350; }
 .badge-correccion { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
 .badge-correccion .badge-dot { background: #ef4444; }
 .badge-aprobado { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; }
@@ -1689,7 +1689,7 @@ textarea.form-control {
     height: 48px;
     flex-shrink: 0;
     border-radius: 50%;
-    background: linear-gradient(135deg, #6366f1, #a855f7);
+    background: linear-gradient(135deg, #e53935, #b71c1c);
     display: flex;
     align-items: center;
     justify-content: center;

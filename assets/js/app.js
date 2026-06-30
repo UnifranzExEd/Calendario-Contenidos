@@ -627,7 +627,7 @@ function renderCalendar() {
             }
 
             const p = state.pestanas.find(p2 => p2.slug === c.pestana_slug);
-            const color = isGhostStyle ? '#64748b' : (p ? p.color : '#6366f1');
+            const color = isGhostStyle ? '#64748b' : (p ? p.color : '#e53935');
             const socialIcon = getSocialIcon(c.red_social);
             const formatoIcon = getFormatIcon(c.formato);
             const estadoColor = getEstadoColor(c.estado);
@@ -706,7 +706,7 @@ function renderCalendar() {
             }
 
             const p = state.pestanas.find(p2 => p2.slug === c.pestana_slug);
-            const color = isGhostStyle ? '#64748b' : (p ? p.color : '#6366f1');
+            const color = isGhostStyle ? '#64748b' : (p ? p.color : '#e53935');
             const ghostClass = isGhostStyle ? ' ghost-content' : '';
             const onClickAttr = isGhostForPP ? '' : `onclick="event.stopPropagation(); openEditModal(${c.id})"`;
             const isAssignedToMe = APP_USER.rol === 'postproductor' && c.postproductor_id == APP_USER.id;
@@ -1885,7 +1885,7 @@ async function renderDropdownsAdmin(container) {
                         `).join('')}
                         <div style="margin-top:10px; display:flex; gap:6px;">
                             <input type="text" class="form-control" id="newDD_${campo}" placeholder="Nueva opción..." style="flex:1">
-                            <input type="color" value="#6366f1" id="newDDColor_${campo}" style="width:40px; padding:2px; background:transparent; border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">
+                            <input type="color" value="#e53935" id="newDDColor_${campo}" style="width:40px; padding:2px; background:transparent; border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">
                             <button class="btn btn-sm btn-primary" onclick="addDropdownOption('${campo}')">ï¼‹</button>
                         </div>
                     </div>

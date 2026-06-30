@@ -29,7 +29,7 @@ switch ($action) {
         if (!$campo || !$valor) jsonResponse(['error' => 'Campo y valor requeridos'], 400);
         $maxRes = sb_get('dropdown_opciones', 'campo=eq.' . urlencode($campo) . '&select=orden&order=orden.desc&limit=1');
         $orden  = intval($maxRes['data'][0]['orden'] ?? 0) + 1;
-        $res    = sb_post('dropdown_opciones', ['campo' => $campo, 'valor' => $valor, 'color' => $input['color'] ?? '#6366f1', 'orden' => $orden]);
+        $res    = sb_post('dropdown_opciones', ['campo' => $campo, 'valor' => $valor, 'color' => $input['color'] ?? '#e53935', 'orden' => $orden]);
         jsonResponse(['success' => true, 'id' => $res['data'][0]['id'] ?? null], 201);
 
     case 'update':
