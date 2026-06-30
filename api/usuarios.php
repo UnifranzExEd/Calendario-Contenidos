@@ -71,8 +71,13 @@ switch ($action) {
         $input = getJsonInput();
         $id    = intval($input['id'] ?? 0);
         if (!$id) jsonResponse(['error' => 'ID requerido'], 400);
-        sb_patch('usuarios', 'id=eq.' . $id, ['activo' => 0]);
-        jsonResponse(['success' => true]);
+        $res = sb_delete('usuarios', 'id=eq.' . $id);
+        if (isset($res['code']) && $res['code'] >= 400) {
+            // Si hay error de foreign key u otro, hacer soft-delete (desactivar)
+            sb_patch('usuarios', 'id=eq.' . $id, ['activo' => 0]);
+            jsonResponse(['success' => true, 'soft_delete' => true, 'message' => 'El usuario tiene contenido asociado, fue marcado como Inactivo en lugar de ser borrado físicamente.']);
+        }
+        jsonResponse(['success' => true, 'message' => 'Usuario eliminado permanentemente.']);
 
     default:
         jsonResponse(['error' => 'Acción no válida: ' . htmlspecialchars($action)], 400);

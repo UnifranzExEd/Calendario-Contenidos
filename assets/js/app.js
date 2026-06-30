@@ -2117,7 +2117,7 @@ async function renderUsuariosAdmin(container) {
                             </tr>
                         </thead>
                         <tbody>
-                            ${usuarios.map(u => `
+                            ${usuarios.filter(u => u.activo !== 0 && u.activo !== false).map(u => `
                                 <tr>
                                     <td><strong>${escHtml(u.nombre)}</strong></td>
                                     <td>${escHtml(u.email)}</td>
@@ -2448,10 +2448,10 @@ async function saveUser() {
 }
 
 async function deleteUser(id) {
-    if (!confirm('¿Estás seguro de eliminar este usuario? (se desactivará)')) return;
+    if (!confirm('¿Estás seguro de eliminar este usuario?')) return;
     try {
-        await apiPost('usuarios.php?action=delete', { id });
-        showToast('Usuario eliminado', 'success');
+        const res = await apiPost('usuarios.php?action=delete', { id });
+        showToast(res.message || 'Usuario eliminado', 'success');
         showAdminSection('usuarios');
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
