@@ -14,14 +14,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
 function getDB() {
     static $pdo = null;
     if ($pdo) return $pdo;
-    // Try env var first, then hardcoded
-    $host = getenv('PGHOST') ?: getenv('DB_HOST') ?: 'db.fhnolvqocysnjwgsdflq.supabase.co';
-    $name = getenv('PGDATABASE') ?: getenv('DB_NAME') ?: 'postgres';
-    $user = getenv('PGUSER') ?: getenv('DB_USER') ?: 'postgres';
-    $pass = getenv('PGPASSWORD') ?: getenv('DB_PASS') ?: 'P6mIlecuZClU1qyU';
-    $port = getenv('PGPORT') ?: getenv('DB_PORT') ?: '5432';
+    // Use Supabase connection POOLER (port 6543) - required for Vercel serverless
+    // Direct connection (port 5432) doesn't work with Vercel's dynamic IPs
+    $host = 'aws-0-us-east-1.pooler.supabase.com';
+    $port = '6543';
+    $name = 'postgres';
+    $user = 'postgres.fhnolvqocysnjwgsdflq'; // pooler user = postgres.[project-ref]
+    $pass = 'P6mIlecuZClU1qyU';
 
-    $dsn = "pgsql:host={$host};port={$port};dbname={$name};sslmode=require";
+    $dsn = "pgsql:host={$host};port={$port};dbname={$name}";
     $pdo = new PDO($dsn, $user, $pass, [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

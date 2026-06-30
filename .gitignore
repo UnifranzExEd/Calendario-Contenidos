@@ -1,3 +1,5 @@
 .DS_Store
 *.log
 if0_42131777_redes.sql
+.vercel
+.env*
