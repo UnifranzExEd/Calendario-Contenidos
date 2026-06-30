@@ -2095,6 +2095,7 @@ async function renderUsuariosAdmin(container) {
                                     </td>
                                     <td>
                                         <button class="btn btn-sm btn-secondary" onclick="openUserEditModal(${u.id})">Editar</button>
+                                        <button class="btn btn-sm btn-secondary" onclick="deleteUser(${u.id})" style="color: var(--danger, #ef4444); border-color: rgba(239, 68, 68, 0.3); margin-left: 4px;">Eliminar</button>
                                     </td>
                                 </tr>
                             `).join('')}
@@ -2407,6 +2408,17 @@ async function saveUser() {
             showToast('Usuario creado', 'success');
         }
         closeUserModal();
+        showAdminSection('usuarios');
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function deleteUser(id) {
+    if (!await confirmCustom('¿Estás seguro de eliminar este usuario? (se desactivará)')) return;
+    try {
+        await apiPost('usuarios.php?action=delete', { id });
+        showToast('Usuario eliminado', 'success');
         showAdminSection('usuarios');
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
