@@ -1,10 +1,23 @@
 <?php
 require_once __DIR__ . '/../config/supabase.php';
 $user   = requireAuth();
-if ($user['rol'] !== 'admin') jsonResponse(['error' => 'Solo administradores'], 403);
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? 'list';
+
+// Only admins can manage users, but anyone can fetch the postproductores list
+if ($user['rol'] !== 'admin' && $action !== 'postproductores') {
+    jsonResponse(['error' => 'Solo administradores'], 403);
+}
+
 switch ($action) {
+    case 'postproductores':
+        $res = sb_get('usuarios', 'activo=eq.1&rol=in.(postproductor,admin)&order=nombre.asc&select=id,nombre');
+        jsonResponse(['data' => $res['data'] ?? []]);
+    case 'get':
+        $id = intval($_GET['id'] ?? 0);
+        $res = sb_get('usuarios', 'id=eq.' . $id);
+        if (empty($res['data'])) jsonResponse(['error' => 'No encontrado'], 404);
+        jsonResponse(['data' => $res['data'][0]]);
     case 'list':
         $res = sb_get('usuarios', 'order=nombre.asc');
         jsonResponse(['data' => $res['data'] ?? []]);
