@@ -2044,15 +2044,25 @@ function showCalendarDayContextMenu(e, dateStr) {
     e.preventDefault();
     e.stopPropagation();
     
-    let cm = document.getElementById('rowContextMenu');
+    let cm = document.getElementById('dayContextMenu');
     if (!cm) {
         cm = document.createElement('div');
-        cm.id = 'rowContextMenu';
+        cm.id = 'dayContextMenu';
         cm.className = 'context-menu';
         document.body.appendChild(cm);
+        
+        // Hide on click outside
+        document.addEventListener('click', () => {
+            const el = document.getElementById('dayContextMenu');
+            if (el) el.style.display = 'none';
+        });
+        window.addEventListener('scroll', () => {
+            const el = document.getElementById('dayContextMenu');
+            if (el) el.style.display = 'none';
+        }, true);
     }
     
-    cm.innerHTML = `<button class="btn btn-sm btn-primary" style="width:100%;text-align:left;display:flex;align-items:center;" onclick="openCreateModalWithDate('${dateStr}'); document.getElementById('rowContextMenu').style.display='none';">
+    cm.innerHTML = `<button class="btn btn-sm btn-primary" style="width:100%;text-align:left;display:flex;align-items:center;" onclick="openCreateModalWithDate('${dateStr}'); document.getElementById('dayContextMenu').style.display='none';">
         <svg class="svg-icon" viewBox="0 0 24 24" style="width:14px;height:14px;margin-right:6px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> CREAR CONTENIDOS
     </button>`;
     
