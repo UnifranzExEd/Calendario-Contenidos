@@ -15,36 +15,39 @@ function mesFromFecha($fecha) {
 switch ($action) {
 
     case 'list':
+        // Resolve pestana slug to id first (no embedding - safer)
+        $pestana_slug = $_GET['pestana'] ?? '';
         $filters = ['deleted_at=is.null'];
-        if ($p = $_GET['pestana'] ?? '') $filters[] = 'pestanas.slug=eq.' . urlencode($p);
-        if ($m = $_GET['mes']     ?? '') $filters[] = 'mes=eq.'         . urlencode($m);
-        if ($a = $_GET['anio']    ?? '') $filters[] = 'anio=eq.'        . $a;
-        if ($e = $_GET['estado']  ?? '') $filters[] = 'estado=eq.'      . urlencode($e);
-        if ($r = $_GET['red_social'] ?? '') $filters[] = 'red_social=eq.' . urlencode($r);
-        if ($b = $_GET['buyer']   ?? '') $filters[] = 'buyer=eq.'       . urlencode($b);
-        if ($pi= $_GET['pilar']   ?? '') $filters[] = 'pilar=eq.'       . urlencode($pi);
-
-        $select = 'select=*,pestanas(slug,nombre,color),contenido_detalle(titulo_post,copy_facebook,copy_instagram,copy_tiktok)';
-        $filter = implode('&', $filters);
-        $res = sb_get('contenidos', $select . '&' . $filter . '&order=fecha.asc.nullslast,id.asc');
-
-        // Flatten embedded data for front-end compatibility
-        $items = [];
-        foreach (($res['data'] ?? []) as $c) {
-            $det = $c['contenido_detalle'][0] ?? [];
-            unset($c['contenido_detalle']);
-            $pst = $c['pestanas'] ?? [];
-            unset($c['pestanas']);
-            $c['pestana_slug']   = $pst['slug']   ?? '';
-            $c['pestana_nombre'] = $pst['nombre'] ?? '';
-            $c['pestana_color']  = $pst['color']  ?? '';
-            $c['titulo_post']    = $det['titulo_post']    ?? null;
-            $c['copy_facebook']  = $det['copy_facebook']  ?? null;
-            $c['copy_instagram'] = $det['copy_instagram'] ?? null;
-            $c['copy_tiktok']    = $det['copy_tiktok']    ?? null;
-            $items[] = $c;
+        if ($pestana_slug) {
+            $pRes = sb_get('pestanas', 'slug=eq.' . urlencode($pestana_slug) . '&select=id&limit=1');
+            $pid  = $pRes['data'][0]['id'] ?? 0;
+            if ($pid) $filters[] = 'pestana_id=eq.' . $pid;
         }
-        jsonResponse(['data' => $items, 'total' => count($items)]);
+        if ($m = $_GET['mes']        ?? '') $filters[] = 'mes=eq.'       . urlencode($m);
+        if ($a = $_GET['anio']       ?? '') $filters[] = 'anio=eq.'      . $a;
+        if ($e = $_GET['estado']     ?? '') $filters[] = 'estado=eq.'    . urlencode($e);
+        if ($r = $_GET['red_social'] ?? '') $filters[] = 'red_social=eq.' . urlencode($r);
+        if ($b = $_GET['buyer']      ?? '') $filters[] = 'buyer=eq.'     . urlencode($b);
+        if ($pi= $_GET['pilar']      ?? '') $filters[] = 'pilar=eq.'     . urlencode($pi);
+
+        $res        = sb_get('contenidos', implode('&', $filters) . '&order=fecha.asc.nullslast,id.asc');
+        $contenidos = is_array($res['data']) ? $res['data'] : [];
+
+        // One shared query for pestana metadata
+        $pestMap = [];
+        $p2 = sb_get('pestanas', 'select=id,slug,nombre,color');
+        foreach (($p2['data'] ?? []) as $p) {
+            if (isset($p['id'])) $pestMap[$p['id']] = $p;
+        }
+        foreach ($contenidos as &$c) {
+            if (!is_array($c)) continue;
+            $pd = $pestMap[$c['pestana_id'] ?? 0] ?? [];
+            $c['pestana_slug']   = $pd['slug']   ?? '';
+            $c['pestana_nombre'] = $pd['nombre'] ?? '';
+            $c['pestana_color']  = $pd['color']  ?? '';
+        }
+        unset($c);
+        jsonResponse(['data' => $contenidos, 'total' => count($contenidos)]);
 
     case 'get':
         $id = intval($_GET['id'] ?? 0);
