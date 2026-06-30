@@ -1,46 +1,23 @@
 <?php
-/**
- * API: Slides de contenido
- */
-require_once __DIR__ . '/../config/auth.php';
-
-header('Content-Type: application/json; charset=utf-8');
-
-$user = requireAuth();
+require_once __DIR__ . '/../config/supabase.php';
+$user   = requireAuth();
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? 'list';
-$db = getDB();
-
 switch ($action) {
     case 'list':
-        $contenido_id = intval($_GET['contenido_id'] ?? 0);
-        if (!$contenido_id) jsonResponse(['error' => 'ID contenido requerido'], 400);
-        
-        $stmt = $db->prepare("SELECT * FROM contenido_slides WHERE contenido_id = ? ORDER BY numero_slide ASC");
-        $stmt->execute([$contenido_id]);
-        jsonResponse(['data' => $stmt->fetchAll()]);
-        break;
-
+        $cid = intval($_GET['contenido_id'] ?? 0);
+        $res = sb_get('contenido_slides', 'contenido_id=eq.' . $cid . '&order=numero_slide.asc');
+        jsonResponse(['data' => $res['data'] ?? []]);
     case 'save':
         if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);
-        
         $input = getJsonInput();
-        $contenido_id = intval($input['contenido_id'] ?? 0);
-        $slides = $input['slides'] ?? [];
-        
-        if (!$contenido_id) jsonResponse(['error' => 'ID contenido requerido'], 400);
-        
-        // Delete existing and re-insert
-        $db->prepare("DELETE FROM contenido_slides WHERE contenido_id = ?")->execute([$contenido_id]);
-        
-        $stmt = $db->prepare("INSERT INTO contenido_slides (contenido_id, numero_slide, texto, notas) VALUES (?, ?, ?, ?)");
-        foreach ($slides as $i => $slide) {
-            $stmt->execute([$contenido_id, $i + 1, $slide['texto'] ?? '', $slide['notas'] ?? null]);
+        $cid   = intval($input['contenido_id'] ?? 0);
+        if (!$cid) jsonResponse(['error' => 'contenido_id requerido'], 400);
+        sb_delete('contenido_slides', 'contenido_id=eq.' . $cid);
+        foreach (($input['slides'] ?? []) as $i => $slide) {
+            sb_post('contenido_slides', ['contenido_id' => $cid, 'numero_slide' => $i+1, 'texto' => $slide['texto'] ?? '', 'notas' => $slide['notas'] ?? null]);
         }
-        
         jsonResponse(['success' => true]);
-        break;
-
     default:
         jsonResponse(['error' => 'Acción no válida'], 400);
 }
