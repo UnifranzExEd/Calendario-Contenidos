@@ -601,6 +601,39 @@ function renderCalendar() {
     const rawDow = firstDay.getDay(); // 0=Sun
     const startDow = (rawDow + 6) % 7; // Mon=0, Tue=1, ..., Sun=6
 
+    // Calculate Mini Dashboard counts
+    const countsBySocial = {};
+    const countsByState = {};
+    let totalItems = 0;
+    
+    state.contenidos.forEach(c => {
+        totalItems++;
+        const red = c.red_social || 'Otra';
+        const estado = c.estado || 'Sin estado';
+        countsBySocial[red] = (countsBySocial[red] || 0) + 1;
+        countsByState[estado] = (countsByState[estado] || 0) + 1;
+    });
+
+    let miniDashHtml = `<div><strong>Total:</strong> ${totalItems}</div>`;
+    miniDashHtml += `<div style="border-left:1px solid var(--border-color); padding-left:15px; display:flex; gap:10px;">
+        <strong style="color:var(--text-muted)">Redes:</strong>
+        ${Object.entries(countsBySocial).map(([k,v]) => `<span>${escHtml(k)}: <strong>${v}</strong></span>`).join(', ')}
+    </div>`;
+    miniDashHtml += `<div style="border-left:1px solid var(--border-color); padding-left:15px; display:flex; gap:10px;">
+        <strong style="color:var(--text-muted)">Estados:</strong>
+        ${Object.entries(countsByState).map(([k,v]) => `<span>${escHtml(k)}: <strong>${v}</strong></span>`).join(', ')}
+    </div>`;
+    
+    const miniDash = document.getElementById('miniDashboard');
+    if (miniDash) {
+        if (totalItems > 0) {
+            miniDash.style.display = 'flex';
+            miniDash.innerHTML = miniDashHtml;
+        } else {
+            miniDash.style.display = 'none';
+        }
+    }
+
     // Build calendar grid
     const dias = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
     let html = dias.map(d => `<div class="calendar-day-header">${d}</div>`).join('');
@@ -620,7 +653,7 @@ function renderCalendar() {
         const isToday = today.getDate() === d && today.getMonth() === monthIdx && today.getFullYear() === year;
         const dayContents = state.contenidos.filter(c => c.fecha === dateStr);
 
-        html += `<div class="calendar-day ${isToday ? 'today' : ''}" onclick="openDayDetail('${dateStr}')">`;
+        html += `<div class="calendar-day ${isToday ? 'today' : ''}" onclick="openDayDetail('${dateStr}')" oncontextmenu="showCalendarDayContextMenu(event, '${dateStr}')">`;
         html += `<div class="day-number">${d}</div>`;
         dayContents.slice(0, 4).forEach(c => {
             const isPostProductor = APP_USER.rol === 'postproductor';
@@ -2005,6 +2038,43 @@ function showContextMenu(e, id) {
     
     cm.style.left = x + 'px';
     cm.style.top = y + 'px';
+}
+
+function showCalendarDayContextMenu(e, dateStr) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    let cm = document.getElementById('rowContextMenu');
+    if (!cm) {
+        cm = document.createElement('div');
+        cm.id = 'rowContextMenu';
+        cm.className = 'context-menu';
+        document.body.appendChild(cm);
+    }
+    
+    cm.innerHTML = `<button class="btn btn-sm btn-primary" style="width:100%;text-align:left;display:flex;align-items:center;" onclick="openCreateModalWithDate('${dateStr}'); document.getElementById('rowContextMenu').style.display='none';">
+        <svg class="svg-icon" viewBox="0 0 24 24" style="width:14px;height:14px;margin-right:6px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> CREAR CONTENIDOS
+    </button>`;
+    
+    cm.style.display = 'block';
+    
+    let x = e.pageX;
+    let y = e.pageY;
+    if (x + cm.offsetWidth > window.innerWidth) x -= cm.offsetWidth;
+    if (y + cm.offsetHeight > window.innerHeight) y -= cm.offsetHeight;
+    
+    cm.style.left = x + 'px';
+    cm.style.top = y + 'px';
+}
+
+function openCreateModalWithDate(dateStr) {
+    openCreateModal();
+    setTimeout(() => {
+        const dateInput = document.getElementById('form_fecha');
+        if (dateInput) {
+            dateInput.value = dateStr;
+        }
+    }, 100);
 }
 
 async function handleContext(action) {
