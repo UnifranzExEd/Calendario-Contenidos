@@ -126,7 +126,7 @@ async function initApp() {
             id: 'all',
             slug: 'all',
             nombre: 'TODOS',
-            color: '#818cf8',
+            color: '#ef5350',
             enlace_carpeta_base: ''
         });
         state.campos = camposRes.data;
@@ -2255,7 +2255,7 @@ function escHtml(str) {
 }
 
 function hexToRgba(hex, alpha) {
-    if (!hex || hex[0] !== '#') return `rgba(99, 102, 241, ${alpha})`;
+    if (!hex || hex[0] !== '#') return `rgba(229, 57, 53, ${alpha})`;
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
@@ -2263,7 +2263,7 @@ function hexToRgba(hex, alpha) {
 }
 
 function lightenColor(hex) {
-    if (!hex || hex[0] !== '#') return '#818cf8';
+    if (!hex || hex[0] !== '#') return '#ef5350';
     const r = Math.min(255, parseInt(hex.slice(1, 3), 16) + 80);
     const g = Math.min(255, parseInt(hex.slice(3, 5), 16) + 80);
     const b = Math.min(255, parseInt(hex.slice(5, 7), 16) + 80);
@@ -2312,7 +2312,7 @@ function getEstadoColor(estado) {
     const map = {
         'En elaboración': '#64748b',
         'Redacción': '#f97316',
-        'En revisión': '#3b82f6',
+        'En revisión': '#e53935',
         'CorrecciÓn': '#ef4444',
         'Aprobado': '#14b8a6',
         'Diseñado': '#10b981',

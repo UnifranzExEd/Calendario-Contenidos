@@ -25,7 +25,7 @@
   --success:      #10b981;
   --warning:      #f59e0b;
   --danger:       #ef4444;
-  --info:         #3b82f6;
+  --info:         #e53935;
   --text-primary: #f1f5f9;
   --text-secondary:#94a3b8;
   --text-muted:   #64748b;
@@ -78,7 +78,7 @@ body {
   padding: 6px 10px; font-size: 0.82rem; font-family: inherit;
   transition: var(--transition); outline: none;
 }
-.filter-input:focus { border-color: var(--accent); background: rgba(99,102,241,0.06); }
+.filter-input:focus { border-color: var(--accent); background: rgba(229, 57, 53,0.06); }
 .quick-btns { display: flex; gap: 4px; }
 .quick-btn {
   padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border);
@@ -87,8 +87,8 @@ body {
   font-family: inherit;
 }
 .quick-btn:hover, .quick-btn.active {
-  background: rgba(99,102,241,0.15); color: var(--accent);
-  border-color: rgba(99,102,241,0.4);
+  background: rgba(229, 57, 53,0.15); color: var(--accent);
+  border-color: rgba(229, 57, 53,0.4);
 }
 .filter-sep { width: 1px; height: 24px; background: var(--border); }
 .btn {
@@ -116,7 +116,7 @@ body {
 }
 .spinner {
   width: 36px; height: 36px;
-  border: 3px solid rgba(99,102,241,0.2);
+  border: 3px solid rgba(229, 57, 53,0.2);
   border-top-color: #e53935;
   border-radius: 50%; animation: spin 0.8s linear infinite;
 }
@@ -144,7 +144,7 @@ body {
 .kpi-card.alcance::before  { background: linear-gradient(90deg,#e53935,#b71c1c); }
 .kpi-card.coments::before  { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
 .kpi-card.compartidos::before { background: linear-gradient(90deg,#10b981,#34d399); }
-.kpi-card.guardados::before{ background: linear-gradient(90deg,#3b82f6,#60a5fa); }
+.kpi-card.guardados::before{ background: linear-gradient(90deg,#e53935,#ef5350); }
 .kpi-card.clics::before    { background: linear-gradient(90deg,#ef5350,#e53935); }
 .kpi-card.publicaciones::before { background: linear-gradient(90deg,#06b6d4,#22d3ee); }
 .kpi-card.espectadores::before  { background: linear-gradient(90deg,#f97316,#fb923c); }
@@ -154,7 +154,7 @@ body {
 .kpi-card.alcance .kpi-icon       { color: #b71c1c; }
 .kpi-card.coments .kpi-icon       { color: #fbbf24; }
 .kpi-card.compartidos .kpi-icon   { color: #34d399; }
-.kpi-card.guardados .kpi-icon     { color: #60a5fa; }
+.kpi-card.guardados .kpi-icon     { color: #ef5350; }
 .kpi-card.clics .kpi-icon         { color: #ef5350; }
 .kpi-card.publicaciones .kpi-icon { color: #22d3ee; }
 .kpi-card.espectadores .kpi-icon  { color: #fb923c; }
@@ -224,7 +224,7 @@ body {
   padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;
 }
 .badge-like    { background: rgba(244,63,94,0.12); color: #fb7185; }
-.badge-reach   { background: rgba(99,102,241,0.12); color: #818cf8; }
+.badge-reach   { background: rgba(229, 57, 53,0.12); color: #ef5350; }
 .badge-comment { background: rgba(245,158,11,0.12); color: #fbbf24; }
 .captura-thumb {
   width: 40px; height: 40px; border-radius: 6px;
@@ -285,8 +285,8 @@ body {
   cursor: pointer; transition: var(--transition);
   position: relative; margin-bottom: 16px;
 }
-.captura-zone:hover { border-color: var(--accent); background: rgba(99,102,241,0.04); }
-.captura-zone.dragover { border-color: var(--accent); background: rgba(99,102,241,0.08); }
+.captura-zone:hover { border-color: var(--accent); background: rgba(229, 57, 53,0.04); }
+.captura-zone.dragover { border-color: var(--accent); background: rgba(229, 57, 53,0.08); }
 .captura-preview {
   width: 100%; border-radius: 10px; max-height: 280px;
   object-fit: contain; display: block;
@@ -809,7 +809,7 @@ function renderCharts(data) {
         { label: 'Likes',     data: (data.by_red||[]).map(r => parseInt(r.likes)||0),     backgroundColor: 'rgba(244,63,94,0.75)', borderRadius: 5 },
         { label: 'Comentarios',data: (data.by_red||[]).map(r => parseInt(r.comentarios)||0),backgroundColor: 'rgba(245,158,11,0.75)',borderRadius: 5 },
         { label: 'Compartidos',data: (data.by_red||[]).map(r => parseInt(r.compartidos)||0),backgroundColor:'rgba(16,185,129,0.75)',borderRadius: 5 },
-        { label: 'Alcance',   data: (data.by_red||[]).map(r => parseInt(r.alcance)||0),   backgroundColor: 'rgba(99,102,241,0.75)', borderRadius: 5 },
+        { label: 'Alcance',   data: (data.by_red||[]).map(r => parseInt(r.alcance)||0),   backgroundColor: 'rgba(229, 57, 53,0.75)', borderRadius: 5 },
       ]
     },
     options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
@@ -821,7 +821,7 @@ function renderCharts(data) {
   // 3. By Formato (donut)
   destroyChart('formato');
   const fmtLabels = (data.by_formato||[]).map(r => r.formato || 'Sin formato');
-  const fmtColors = ['#e53935','#f43f5e','#f59e0b','#10b981','#3b82f6','#b71c1c','#ec4899'];
+  const fmtColors = ['#e53935','#f43f5e','#f59e0b','#10b981','#e53935','#b71c1c','#ec4899'];
   charts.formato = new Chart(document.getElementById('chartFormato'), {
     type: 'doughnut',
     data: {
@@ -851,7 +851,7 @@ function renderCharts(data) {
       labels: pestLabels,
       datasets: [
         { label: 'Likes',  data: (data.by_pestana||[]).map(r => parseInt(r.likes)||0),  backgroundColor: pestColors.map(c=>c+'bb'), borderRadius:4 },
-        { label: 'Alcance',data: (data.by_pestana||[]).map(r => parseInt(r.alcance)||0),backgroundColor:'rgba(99,102,241,0.4)',borderRadius:4 },
+        { label: 'Alcance',data: (data.by_pestana||[]).map(r => parseInt(r.alcance)||0),backgroundColor:'rgba(229, 57, 53,0.4)',borderRadius:4 },
       ]
     },
     options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
@@ -902,8 +902,8 @@ function renderCharts(data) {
       datasets: [{
         label: 'Publicaciones',
         data: (data.time_series||[]).map(r => parseInt(r.publicaciones)||0),
-        backgroundColor: 'rgba(99,102,241,0.6)', borderRadius: 4,
-        hoverBackgroundColor: 'rgba(99,102,241,0.85)'
+        backgroundColor: 'rgba(229, 57, 53,0.6)', borderRadius: 4,
+        hoverBackgroundColor: 'rgba(229, 57, 53,0.85)'
       }]
     },
     options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false }
@@ -915,7 +915,7 @@ function renderCharts(data) {
 // ────────────────────────────────────────────────────────────────────────────
 function getSocialColor(red) {
   const map = { Facebook:'rgba(59,130,246,0.15)', Instagram:'rgba(236,72,153,0.15)', TikTok:'rgba(255,255,255,0.08)', YouTube:'rgba(239,68,68,0.15)' };
-  return map[red] || 'rgba(99,102,241,0.12)';
+  return map[red] || 'rgba(229, 57, 53,0.12)';
 }
 function getSocialTextColor(red) {
   const map = { Facebook:'#93c5fd', Instagram:'#f9a8d4', TikTok:'#e2e8f0', YouTube:'#fca5a5' };
@@ -1127,7 +1127,7 @@ async function exportPDF() {
     // Gradient header
     pdf.setFillColor(30, 27, 75);
     pdf.rect(0, 0, W, 28, 'F');
-    pdf.setFillColor(99, 102, 241);
+    pdf.setFillColor(229, 57, 53);
     pdf.rect(0, 0, 5, 28, 'F');
     pdf.setFont('helvetica','bold');
     pdf.setFontSize(16); pdf.setTextColor(255,255,255);
