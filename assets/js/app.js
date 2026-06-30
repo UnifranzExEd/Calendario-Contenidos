@@ -793,29 +793,32 @@ function renderContentForm(data) {
     const btnGuardar = document.getElementById('btnGuardarContenido');
     if (btnGuardar) btnGuardar.style.display = canEdit ? '' : 'none';
     
-    // Default fields shown when pestana_campos has no entries for this tab
-    const DEFAULT_CAMPOS = [
-        { nombre_campo: 'tema',        nombre_display: 'TÍTULO',       tipo_campo: 'texto',     ancho: '100%' },
-        { nombre_campo: 'fecha',       nombre_display: 'FECHA',        tipo_campo: 'fecha',     ancho: '160px' },
-        { nombre_campo: 'buyer',       nombre_display: 'BUYER',        tipo_campo: 'dropdown',  dropdown_grupo: 'buyer',      ancho: '160px' },
-        { nombre_campo: 'pilar',       nombre_display: 'PILAR',        tipo_campo: 'dropdown',  dropdown_grupo: 'pilar',      ancho: '160px' },
-        { nombre_campo: 'atributo',    nombre_display: 'ATRIBUTO',     tipo_campo: 'dropdown',  dropdown_grupo: 'atributo',   ancho: '160px' },
-        { nombre_campo: 'red_social',  nombre_display: 'RED SOCIAL',   tipo_campo: 'dropdown',  dropdown_grupo: 'red_social', ancho: '160px' },
-        { nombre_campo: 'estado',      nombre_display: 'ESTADO',       tipo_campo: 'dropdown',  dropdown_grupo: 'estado',     ancho: '160px' },
-        { nombre_campo: 'formato',     nombre_display: 'FORMATO',      tipo_campo: 'dropdown',  dropdown_grupo: 'formato',    ancho: '160px' },
-        { nombre_campo: 'horario',     nombre_display: 'HORARIO',      tipo_campo: 'texto',     ancho: '120px' },
-        { nombre_campo: 'enlace_publicado', nombre_display: 'ENLACE PUBLICADO', tipo_campo: 'url', ancho: '100%' },
-        { nombre_campo: 'enlace_diseno',    nombre_display: 'DISEÑO FINAL (DRIVE)', tipo_campo: 'url', ancho: '100%' },
+    // ── Standard fields always shown ──────────────────────────────────────
+    // These are hardcoded to always appear regardless of pestana_campos DB config.
+    const STANDARD_CAMPOS = [
+        { nombre_campo: 'tema',       nombre_display: 'TÍTULO',     tipo_campo: 'texto',    ancho: '100%'  },
+        { nombre_campo: 'fecha',      nombre_display: 'FECHA',      tipo_campo: 'fecha',    ancho: '160px' },
+        { nombre_campo: 'buyer',      nombre_display: 'BUYER',      tipo_campo: 'dropdown', dropdown_grupo: 'buyer',      ancho: '160px' },
+        { nombre_campo: 'pilar',      nombre_display: 'PILAR',      tipo_campo: 'dropdown', dropdown_grupo: 'pilar',      ancho: '160px' },
+        { nombre_campo: 'atributo',   nombre_display: 'ATRIBUTO',   tipo_campo: 'dropdown', dropdown_grupo: 'atributo',   ancho: '160px' },
+        { nombre_campo: 'red_social', nombre_display: 'RED SOCIAL', tipo_campo: 'dropdown', dropdown_grupo: 'red_social', ancho: '160px' },
+        { nombre_campo: 'estado',     nombre_display: 'ESTADO',     tipo_campo: 'dropdown', dropdown_grupo: 'estado',     ancho: '160px' },
+        { nombre_campo: 'formato',    nombre_display: 'FORMATO',    tipo_campo: 'dropdown', dropdown_grupo: 'formato',    ancho: '160px' },
+        { nombre_campo: 'horario',    nombre_display: 'HORARIO',    tipo_campo: 'texto',    ancho: '120px' },
     ];
+    const STANDARD_NAMES = new Set(STANDARD_CAMPOS.map(c => c.nombre_campo));
 
-    const rawCampos = state.campos[state.modalTab] || [];
-    const camposTab = rawCampos.length > 0 ? rawCampos : DEFAULT_CAMPOS;
+    // Merge: standard first, then any extra tab-specific campos from DB
+    const dbCampos = (state.campos[state.modalTab] || []).filter(c =>
+        !STANDARD_NAMES.has(c.nombre_campo)   // skip duplicates of standard fields
+    );
+    const camposTab = [...STANDARD_CAMPOS, ...dbCampos];
 
     let html = `<div class="editor-section">
         <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px;">`;
     const shortFields = [];
-    const linkFields = [];
-    const textFields = [];
+    const linkFields  = [];
+    const textFields  = [];
     let temaField = null;
     
     camposTab.forEach(campo => {
@@ -829,6 +832,7 @@ function renderContentForm(data) {
             shortFields.push(campo);
         }
     });
+
 
     // Helper to generate field HTML
     const renderField = (campo) => {
@@ -1370,20 +1374,23 @@ async function checkSpellingErrors(data) {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function saveContent() {
     const targetTab = state.modalTab || state.currentTab;
-    const DEFAULT_CAMPOS = [
+    // Always collect these standard fields (mirrors renderContentForm logic)
+    const STANDARD_CAMPOS = [
         { nombre_campo: 'tema' }, { nombre_campo: 'fecha' }, { nombre_campo: 'buyer' },
         { nombre_campo: 'pilar' }, { nombre_campo: 'atributo' }, { nombre_campo: 'red_social' },
         { nombre_campo: 'estado' }, { nombre_campo: 'formato' }, { nombre_campo: 'horario' },
         { nombre_campo: 'enlace_publicado' }, { nombre_campo: 'enlace_diseno' },
     ];
-    const rawCampos = state.campos[targetTab] || [];
-    const campos = rawCampos.length > 0 ? rawCampos : DEFAULT_CAMPOS;
+    const STANDARD_NAMES = new Set(STANDARD_CAMPOS.map(c => c.nombre_campo));
+    const dbCampos = (state.campos[targetTab] || []).filter(c => !STANDARD_NAMES.has(c.nombre_campo));
+    const campos = [...STANDARD_CAMPOS, ...dbCampos];
     const data = { pestana: targetTab };
 
     campos.forEach(c => {
         const el = document.getElementById('form_' + c.nombre_campo);
         if (el) data[c.nombre_campo] = el.value;
     });
+
 
     // PostProductor
     const ppEl = document.getElementById('form_postproductor_id');
