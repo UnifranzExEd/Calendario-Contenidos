@@ -793,7 +793,24 @@ function renderContentForm(data) {
     const btnGuardar = document.getElementById('btnGuardarContenido');
     if (btnGuardar) btnGuardar.style.display = canEdit ? '' : 'none';
     
-    const camposTab = state.campos[state.modalTab] || [];
+    // Default fields shown when pestana_campos has no entries for this tab
+    const DEFAULT_CAMPOS = [
+        { nombre_campo: 'tema',        nombre_display: 'TÍTULO',       tipo_campo: 'texto',     ancho: '100%' },
+        { nombre_campo: 'fecha',       nombre_display: 'FECHA',        tipo_campo: 'fecha',     ancho: '160px' },
+        { nombre_campo: 'buyer',       nombre_display: 'BUYER',        tipo_campo: 'dropdown',  dropdown_grupo: 'buyer',      ancho: '160px' },
+        { nombre_campo: 'pilar',       nombre_display: 'PILAR',        tipo_campo: 'dropdown',  dropdown_grupo: 'pilar',      ancho: '160px' },
+        { nombre_campo: 'atributo',    nombre_display: 'ATRIBUTO',     tipo_campo: 'dropdown',  dropdown_grupo: 'atributo',   ancho: '160px' },
+        { nombre_campo: 'red_social',  nombre_display: 'RED SOCIAL',   tipo_campo: 'dropdown',  dropdown_grupo: 'red_social', ancho: '160px' },
+        { nombre_campo: 'estado',      nombre_display: 'ESTADO',       tipo_campo: 'dropdown',  dropdown_grupo: 'estado',     ancho: '160px' },
+        { nombre_campo: 'formato',     nombre_display: 'FORMATO',      tipo_campo: 'dropdown',  dropdown_grupo: 'formato',    ancho: '160px' },
+        { nombre_campo: 'horario',     nombre_display: 'HORARIO',      tipo_campo: 'texto',     ancho: '120px' },
+        { nombre_campo: 'enlace_publicado', nombre_display: 'ENLACE PUBLICADO', tipo_campo: 'url', ancho: '100%' },
+        { nombre_campo: 'enlace_diseno',    nombre_display: 'DISEÑO FINAL (DRIVE)', tipo_campo: 'url', ancho: '100%' },
+    ];
+
+    const rawCampos = state.campos[state.modalTab] || [];
+    const camposTab = rawCampos.length > 0 ? rawCampos : DEFAULT_CAMPOS;
+
     let html = `<div class="editor-section">
         <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px;">`;
     const shortFields = [];
@@ -1353,7 +1370,14 @@ async function checkSpellingErrors(data) {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function saveContent() {
     const targetTab = state.modalTab || state.currentTab;
-    const campos = state.campos[targetTab] || [];
+    const DEFAULT_CAMPOS = [
+        { nombre_campo: 'tema' }, { nombre_campo: 'fecha' }, { nombre_campo: 'buyer' },
+        { nombre_campo: 'pilar' }, { nombre_campo: 'atributo' }, { nombre_campo: 'red_social' },
+        { nombre_campo: 'estado' }, { nombre_campo: 'formato' }, { nombre_campo: 'horario' },
+        { nombre_campo: 'enlace_publicado' }, { nombre_campo: 'enlace_diseno' },
+    ];
+    const rawCampos = state.campos[targetTab] || [];
+    const campos = rawCampos.length > 0 ? rawCampos : DEFAULT_CAMPOS;
     const data = { pestana: targetTab };
 
     campos.forEach(c => {
