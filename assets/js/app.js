@@ -1910,6 +1910,7 @@ function customConfirm(message) {
     });
 }
 
+function initContextMenu() {
     let cm = document.getElementById('rowContextMenu');
     if (!cm) {
         cm = document.createElement('div');
