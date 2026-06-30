@@ -4,13 +4,13 @@
  * Compatible con Supabase (PostgreSQL) y Vercel Serverless
  */
 
-// Always use env vars, with Supabase as default fallback
-define('DB_HOST', getenv('DB_HOST') ?: 'db.fhnolvqocysnjwgsdflq.supabase.co');
-define('DB_NAME', getenv('DB_NAME') ?: 'postgres');
-define('DB_USER', getenv('DB_USER') ?: 'postgres');
-define('DB_PASS', getenv('DB_PASS') ?: 'P6mIlecuZClU1qyU');
-define('DB_PORT', getenv('DB_PORT') ?: '5432');
-define('DB_DRIVER', getenv('DB_DRIVER') ?: 'pgsql');
+// Supabase PostgreSQL credentials
+define('DB_HOST',   getenv('DB_HOST')   ?: 'db.fhnolvqocysnjwgsdflq.supabase.co');
+define('DB_NAME',   getenv('DB_NAME')   ?: 'postgres');
+define('DB_USER',   getenv('DB_USER')   ?: 'postgres');
+define('DB_PASS',   'P6mIlecuZClU1qyU'); // hardcoded - Supabase password
+define('DB_PORT',   getenv('DB_PORT')   ?: '5432');
+define('DB_DRIVER', 'pgsql');            // always PostgreSQL
 define('DB_CHARSET', 'utf8');
 
 // App config
