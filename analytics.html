@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="UNIFRANZ Online - Analytics de Contenidos">
-<title>Analytics Pro | UNIFRANZ Online</title>
+<meta name="description" content="Executive Education - Analytics de Contenidos">
+<title>Analytics Pro | Executive Education</title>
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -13,9 +13,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg-primary:   #0a0a1a;
-  --bg-secondary: #111128;
-  --bg-card:      #161630;
+  --bg-primary:   #161616;
+  --bg-secondary: #1a1a1a;
+  --bg-card:      #1e1e1e;
   --bg-glass:     rgba(255,255,255,0.04);
   --bg-hover:     rgba(255,255,255,0.07);
   --border:       rgba(255,255,255,0.08);
@@ -46,7 +46,7 @@ body {
 /* ── TOP HEADER ─────────────────────────────── */
 .app-header {
   position: sticky; top: 0; z-index: 100;
-  background: rgba(10,10,26,0.95);
+  background: rgba(22,22,22,0.95);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
   padding: 14px 24px;
@@ -110,7 +110,7 @@ body {
 
 /* ── LOADING / ERROR ─────────────────────────── */
 .loading-overlay {
-  position: fixed; inset: 0; background: rgba(10,10,26,0.85);
+  position: fixed; inset: 0; background: rgba(22,22,22,0.85);
   display: flex; align-items: center; justify-content: center;
   z-index: 9999; flex-direction: column; gap: 16px;
 }
@@ -1131,7 +1131,7 @@ async function exportPDF() {
     pdf.rect(0, 0, 5, 28, 'F');
     pdf.setFont('helvetica','bold');
     pdf.setFontSize(16); pdf.setTextColor(255,255,255);
-    pdf.text('UNIFRANZ Online — Analytics Pro', 12, 12);
+    pdf.text('Executive Education — Analytics Pro', 12, 12);
     pdf.setFontSize(9); pdf.setTextColor(148,163,184);
     pdf.text(document.getElementById('periodLabel').textContent, 12, 20);
     pdf.setFontSize(8); pdf.setTextColor(100,116,139);
