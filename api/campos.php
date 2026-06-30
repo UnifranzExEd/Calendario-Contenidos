@@ -9,13 +9,13 @@ switch ($action) {
 
     case 'all':
         // Two queries, manual join (more reliable than PostgREST embedding)
-        $pestanas = sb_get('pestanas', 'activo=eq.true&select=id,slug,nombre,color&order=orden.asc');
+        $pestanas = sb_get('pestanas', 'activo=eq.1&select=id,slug,nombre,color&order=orden.asc');
         $slugMap  = [];
         foreach (($pestanas['data'] ?? []) as $p) {
             if (isset($p['id'])) $slugMap[$p['id']] = $p['slug'] ?? 'default';
         }
 
-        $campos  = sb_get('pestana_campos', 'visible=eq.true&order=orden.asc');
+        $campos  = sb_get('pestana_campos', 'visible=eq.1&order=orden.asc');
         $grouped = [];
         foreach (($campos['data'] ?? []) as $r) {
             if (!is_array($r)) continue;
@@ -30,14 +30,14 @@ switch ($action) {
         if ($pestana) {
             $pRes = sb_get('pestanas', 'slug=eq.' . urlencode($pestana) . '&select=id&limit=1');
             $pid  = $pRes['data'][0]['id'] ?? 0;
-            $res  = sb_get('pestana_campos', 'pestana_id=eq.' . $pid . '&visible=eq.true&order=orden.asc');
+            $res  = sb_get('pestana_campos', 'pestana_id=eq.' . $pid . '&visible=eq.1&order=orden.asc');
         } else {
-            $res = sb_get('pestana_campos', 'visible=eq.true&order=orden.asc');
+            $res = sb_get('pestana_campos', 'visible=eq.1&order=orden.asc');
         }
         jsonResponse(['data' => is_array($res['data']) ? $res['data'] : []]);
 
     case 'pestanas':
-        $res = sb_get('pestanas', 'activo=eq.true&order=orden.asc');
+        $res = sb_get('pestanas', 'activo=eq.1&order=orden.asc');
         jsonResponse(['data' => is_array($res['data']) ? $res['data'] : []]);
 
     case 'update':
@@ -72,7 +72,7 @@ switch ($action) {
         if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);
         if (!can('config_campos', $user)) jsonResponse(['error' => 'No autorizado'], 403);
         $input = getJsonInput();
-        sb_patch('pestana_campos', 'id=eq.' . intval($input['id'] ?? 0), ['visible' => false]);
+        sb_patch('pestana_campos', 'id=eq.' . intval($input['id'] ?? 0), ['visible' => 0]);
         jsonResponse(['success' => true]);
 
     case 'update_pestana':

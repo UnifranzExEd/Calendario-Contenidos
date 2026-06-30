@@ -47,7 +47,7 @@ switch ($action) {
         if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);
         if ($user['rol'] !== 'admin') jsonResponse(['error' => 'No autorizado'], 403);
         $input = getJsonInput();
-        sb_patch('dropdown_opciones', 'id=eq.' . intval($input['id'] ?? 0), ['activo' => false]);
+        sb_patch('dropdown_opciones', 'id=eq.' . intval($input['id'] ?? 0), ['activo' => 0]);
         jsonResponse(['success' => true]);
 
     default:

@@ -18,12 +18,12 @@ switch ($action) {
         if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);
         $input = getJsonInput();
         if (empty($input['tag'])) jsonResponse(['error' => 'Tag requerido'], 400);
-        $res = sb_post('hashtags', ['tag' => ltrim($input['tag'], '#'), 'categoria' => $input['categoria'] ?? null, 'red_social' => $input['red_social'] ?? null, 'activo' => true]);
+        $res = sb_post('hashtags', ['tag' => ltrim($input['tag'], '#'), 'categoria' => $input['categoria'] ?? null, 'red_social' => $input['red_social'] ?? null, 'activo' => 1]);
         jsonResponse(['success' => true, 'id' => $res['data'][0]['id'] ?? null], 201);
     case 'delete':
         if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);
         $input = getJsonInput();
-        sb_patch('hashtags', 'id=eq.' . intval($input['id'] ?? 0), ['activo' => false]);
+        sb_patch('hashtags', 'id=eq.' . intval($input['id'] ?? 0), ['activo' => 0]);
         jsonResponse(['success' => true]);
     case 'attach':
         if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);

@@ -14,8 +14,8 @@ switch ($action) {
         if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);
         $input = getJsonInput();
         $id    = intval($input['id'] ?? 0);
-        if ($id) sb_patch('notificaciones', 'id=eq.' . $id, ['leida' => true]);
-        else     sb_patch('notificaciones', 'usuario_id=eq.' . $user['id'], ['leida' => true]);
+        if ($id) sb_patch('notificaciones', 'id=eq.' . $id, ['leida' => 1]);
+        else     sb_patch('notificaciones', 'usuario_id=eq.' . $user['id'], ['leida' => 1]);
         jsonResponse(['success' => true]);
     default:
         jsonResponse(['error' => 'Acción no válida'], 400);

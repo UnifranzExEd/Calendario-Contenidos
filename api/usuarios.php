@@ -32,7 +32,7 @@ switch ($action) {
     case 'delete':
         if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);
         $input = getJsonInput();
-        sb_patch('usuarios', 'id=eq.' . intval($input['id'] ?? 0), ['activo' => false]);
+        sb_patch('usuarios', 'id=eq.' . intval($input['id'] ?? 0), ['activo' => 0]);
         jsonResponse(['success' => true]);
     default:
         jsonResponse(['error' => 'Acción no válida'], 400);
