@@ -35,8 +35,12 @@ async function api(endpoint, params = {}) {
             url.searchParams.set(k, params[k]);
         }
     });
-    const res = await fetch(url);
+    const token = localStorage.getItem('auth_token');
+    const headers = {};
+    if (token) headers['X-Auth-Token'] = token;
+    const res = await fetch(url, { headers });
     if (!res.ok) {
+        if (res.status === 401) { localStorage.removeItem('auth_token'); window.location.href = 'index.html'; return; }
         const err = await res.json().catch(() => ({ error: 'Error del servidor' }));
         throw new Error(err.error || 'Error');
     }
@@ -44,11 +48,15 @@ async function api(endpoint, params = {}) {
 }
 
 async function apiPost(endpoint, data = {}) {
+    const token = localStorage.getItem('auth_token');
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['X-Auth-Token'] = token;
     const res = await fetch(API_BASE + '/' + endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(data)
     });
+    if (res.status === 401) { localStorage.removeItem('auth_token'); window.location.href = 'index.html'; return; }
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Error');
     return json;

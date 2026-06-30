@@ -346,8 +346,19 @@
 
     (async function initApp() {
         try {
-            const res = await fetch('api/auth.php?action=me');
+            // Check token exists first — if cache was cleared, redirect immediately
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            const res = await fetch('api/auth.php?action=me', {
+                headers: { 'X-Auth-Token': token }
+            });
             if (!res.ok) {
+                // Session expired or invalid — clear and redirect to login
+                localStorage.removeItem('auth_token');
                 window.location.href = 'index.html';
                 return;
             }
