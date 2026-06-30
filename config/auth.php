@@ -1,66 +1,115 @@
 <?php
 /**
- * Autenticación y Permisos - UNIFRANZ Calendar
+ * Autenticación sin PHP Sessions (compatible con Vercel Serverless)
+ * Usa tokens en base de datos en lugar de $_SESSION
  */
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
 
 require_once __DIR__ . '/database.php';
 
 /**
- * Obtener URL base del proyecto
+ * Obtener token de la request (cookie o header)
  */
-function getBaseUrl() {
-    $scriptDir = dirname($_SERVER['SCRIPT_NAME']);
-    // Si estamos en views/ o api/, subir un nivel
-    if (preg_match('#/(views|api|import)$#', $scriptDir)) {
-        $scriptDir = dirname($scriptDir);
+function getRequestToken() {
+    // Primero buscar en header Authorization
+    $headers = getallheaders();
+    if (!empty($headers['X-Auth-Token'])) {
+        return trim($headers['X-Auth-Token']);
     }
-    return rtrim($scriptDir, '/') . '/';
+    // Luego en cookie
+    return $_COOKIE['auth_token'] ?? null;
 }
 
 /**
  * Verificar si el usuario está autenticado
  */
 function isAuthenticated() {
-    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+    $token = getRequestToken();
+    if (!$token) return false;
+    
+    $db = getDB();
+    $stmt = $db->prepare("SELECT * FROM user_sessions WHERE token = ? AND expires_at > NOW()");
+    $stmt->execute([$token]);
+    return $stmt->fetch() !== false;
 }
 
 /**
  * Obtener usuario actual
  */
 function getCurrentUser() {
-    if (!isAuthenticated()) return null;
+    $token = getRequestToken();
+    if (!$token) return null;
     
     $db = getDB();
-    $stmt = $db->prepare("SELECT id, nombre, email, rol, avatar, activo FROM usuarios WHERE id = ? AND activo = 1");
-    $stmt->execute([$_SESSION['user_id']]);
-    return $stmt->fetch();
+    $stmt = $db->prepare("
+        SELECT u.id, u.nombre, u.email, u.rol, u.avatar, u.activo 
+        FROM user_sessions s
+        JOIN usuarios u ON s.user_id = u.id
+        WHERE s.token = ? AND s.expires_at > NOW() AND u.activo = 1
+    ");
+    $stmt->execute([$token]);
+    return $stmt->fetch() ?: null;
 }
 
 /**
- * Requerir autenticación (redirige al login si no está autenticado)
+ * Requerir autenticación (devuelve error JSON si no autenticado)
  */
 function requireAuth() {
-    if (!isAuthenticated()) {
-        if (isApiRequest()) {
-            jsonResponse(['error' => 'No autenticado'], 401);
-        }
-        header('Location: ' . getBaseUrl() . 'index.php');
-        exit;
-    }
     $user = getCurrentUser();
     if (!$user) {
-        session_destroy();
-        if (isApiRequest()) {
-            jsonResponse(['error' => 'Usuario no válido'], 401);
-        }
-        header('Location: ' . getBaseUrl() . 'index.php');
-        exit;
+        jsonResponse(['error' => 'No autenticado'], 401);
     }
     return $user;
+}
+
+/**
+ * Login de usuario - genera token en DB
+ */
+function loginUser($email, $password) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT * FROM usuarios WHERE email = ? AND activo = 1");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
+    
+    if (!$user || !password_verify($password, $user['password'])) {
+        return false;
+    }
+    
+    // Generar token único
+    $token = bin2hex(random_bytes(32));
+    
+    // Limpiar sesiones viejas del usuario
+    $db->prepare("DELETE FROM user_sessions WHERE user_id = ?")->execute([$user['id']]);
+    
+    // Crear nueva sesión
+    $stmt = $db->prepare("
+        INSERT INTO user_sessions (token, user_id, rol, nombre, expires_at) 
+        VALUES (?, ?, ?, ?, NOW() + INTERVAL '24 hours')
+    ");
+    $stmt->execute([$token, $user['id'], $user['rol'], $user['nombre']]);
+    
+    // Setear cookie
+    setcookie('auth_token', $token, [
+        'expires'  => time() + 86400,
+        'path'     => '/',
+        'httponly' => true,
+        'secure'   => true,
+        'samesite' => 'Lax'
+    ]);
+    
+    $user['_token'] = $token;
+    return $user;
+}
+
+/**
+ * Logout
+ */
+function logoutUser() {
+    $token = getRequestToken();
+    if ($token) {
+        $db = getDB();
+        $db->prepare("DELETE FROM user_sessions WHERE token = ?")->execute([$token]);
+    }
+    setcookie('auth_token', '', time() - 3600, '/');
 }
 
 /**
@@ -69,13 +118,8 @@ function requireAuth() {
 function requireRole($roles) {
     $user = requireAuth();
     if (!is_array($roles)) $roles = [$roles];
-    
     if (!in_array($user['rol'], $roles)) {
-        if (isApiRequest()) {
-            jsonResponse(['error' => 'No tienes permisos para esta acción'], 403);
-        }
-        header('Location: ' . getBaseUrl() . 'views/dashboard.php');
-        exit;
+        jsonResponse(['error' => 'No tienes permisos para esta acción'], 403);
     }
     return $user;
 }
@@ -91,39 +135,10 @@ function hasRole($role) {
 }
 
 /**
- * Login de usuario
- */
-function loginUser($email, $password) {
-    $db = getDB();
-    $stmt = $db->prepare("SELECT * FROM usuarios WHERE email = ? AND activo = 1");
-    $stmt->execute([$email]);
-    $user = $stmt->fetch();
-    
-    if (!$user || !password_verify($password, $user['password'])) {
-        return false;
-    }
-    
-    $_SESSION['user_id'] = $user['id'];
-    $_SESSION['user_rol'] = $user['rol'];
-    $_SESSION['user_nombre'] = $user['nombre'];
-    $_SESSION['login_time'] = time();
-    
-    return $user;
-}
-
-/**
- * Logout
- */
-function logoutUser() {
-    session_destroy();
-}
-
-/**
  * Verificar si es una petición a la API
  */
 function isApiRequest() {
-    return strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false ||
-           (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+    return strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false;
 }
 
 /**
@@ -210,7 +225,7 @@ function crearNotificacion($usuario_id, $tipo, $mensaje, $contenido_id = null) {
 }
 
 /**
- * Crear notificación para todos los usuarios de un rol
+ * Notificar a todos los usuarios de un rol
  */
 function notificarRol($rol, $tipo, $mensaje, $contenido_id = null) {
     $db = getDB();
@@ -220,4 +235,15 @@ function notificarRol($rol, $tipo, $mensaje, $contenido_id = null) {
     foreach ($usuarios as $u) {
         crearNotificacion($u['id'], $tipo, $mensaje, $contenido_id);
     }
+}
+
+/**
+ * Obtener URL base
+ */
+function getBaseUrl() {
+    $scriptDir = dirname($_SERVER['SCRIPT_NAME']);
+    if (preg_match('#/(views|api|import)$#', $scriptDir)) {
+        $scriptDir = dirname($scriptDir);
+    }
+    return rtrim($scriptDir, '/') . '/';
 }

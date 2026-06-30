@@ -1,10 +1,18 @@
 <?php
 /**
- * API: Autenticación
+ * API: Autenticación (Token-based, compatible con Vercel Serverless)
  */
-require_once __DIR__ . '/../config/auth.php';
-
 header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, X-Auth-Token');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+require_once __DIR__ . '/../config/auth.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
@@ -24,11 +32,12 @@ switch ($action) {
         if ($user) {
             jsonResponse([
                 'success' => true,
-                'user' => [
-                    'id' => $user['id'],
+                'token'   => $user['_token'],
+                'user'    => [
+                    'id'     => $user['id'],
                     'nombre' => $user['nombre'],
-                    'email' => $user['email'],
-                    'rol' => $user['rol']
+                    'email'  => $user['email'],
+                    'rol'    => $user['rol']
                 ]
             ]);
         } else {
@@ -45,7 +54,7 @@ switch ($action) {
         $user = requireAuth();
         $perms = getPermissions($user['rol']);
         jsonResponse([
-            'user' => $user,
+            'user'        => $user,
             'permissions' => $perms
         ]);
         break;

@@ -111,9 +111,15 @@
         // Check if already logged in
         (async function() {
             try {
-                const res = await fetch('api/auth.php?action=me');
+                const token = localStorage.getItem('auth_token');
+                if (!token) return;
+                const res = await fetch('api/auth.php?action=me', {
+                    headers: { 'X-Auth-Token': token }
+                });
                 if (res.ok) {
                     window.location.href = 'dashboard.html?v=' + Date.now();
+                } else {
+                    localStorage.removeItem('auth_token');
                 }
             } catch(e) {}
         })();
@@ -124,10 +130,10 @@
             const btn = document.getElementById('toggleBtn');
             if (input.type === 'password') {
                 input.type = 'text';
-                btn.textContent = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+                btn.innerHTML = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
             } else {
                 input.type = 'password';
-                btn.textContent = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+                btn.innerHTML = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
             }
         }
 
@@ -160,6 +166,8 @@
                 const data = await res.json();
 
                 if (res.ok && data.success) {
+                    // Save token for all future requests
+                    if (data.token) localStorage.setItem('auth_token', data.token);
                     window.location.href = 'dashboard.html?v=' + Date.now();
                 } else {
                     errorMsg.textContent = data.error || 'Email o contraseña incorrectos.';
@@ -168,7 +176,7 @@
                     btn.disabled = false;
                 }
             } catch (err) {
-                errorMsg.textContent = 'Error de conexión al servidor. Verifica que el servidor PHP esté funcionando.';
+                errorMsg.textContent = 'Error de conexión al servidor.';
                 errorMsg.classList.add('show');
                 btn.innerHTML = 'Iniciar Sesión';
                 btn.disabled = false;
