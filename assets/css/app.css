@@ -548,7 +548,7 @@ textarea.form-control {
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid var(--border-color);
-    background: rgba(15, 15, 42, 0.8);
+    background: rgba(30, 30, 30, 0.8);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     position: sticky;
@@ -677,7 +677,7 @@ textarea.form-control {
     display: flex;
     align-items: stretch;
     border-bottom: 1px solid var(--border-color);
-    background: rgba(15, 15, 42, 0.5);
+    background: rgba(30, 30, 30, 0.5);
     padding: 0 24px;
     overflow-x: auto;
     gap: 2px;
@@ -1790,7 +1790,7 @@ textarea.form-control {
 .loading-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(10, 10, 26, 0.7);
+    background: rgba(30, 30, 30, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2222,7 +2222,7 @@ textarea.form-control {
     box-shadow: 1px 0 15px rgba(0, 0, 0, 0.2);
 }
 .header {
-    background: rgba(15, 15, 25, 0.75);
+    background: rgba(30, 30, 30, 0.75);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
