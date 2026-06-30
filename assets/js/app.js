@@ -1021,7 +1021,7 @@ function renderContentForm(data) {
             <div class="editor-section-title">Copy / Caption por Red Social</div>
             
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
-                <div class="copy-section" style="margin-bottom:0;">
+                <div class="copy-section" id="boxCopyFB" style="margin-bottom:0; display:none;">
                     <div class="copy-header">
                         <div class="copy-label"><span class="social-icon" style="color:#1877F2;">${getSocialSvg('facebook')}</span> Facebook</div>
                         <button class="btn btn-sm btn-secondary btn-copy-text" onclick="copyText('formCopyFB')"><svg class="svg-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copiar</button>
@@ -1029,7 +1029,7 @@ function renderContentForm(data) {
                     <textarea class="form-control" id="formCopyFB" rows="3" spellcheck="true" lang="es" placeholder="Copy para Facebook...">${escHtml(data.detalle?.copy_facebook || '')}</textarea>
                 </div>
                 
-                <div class="copy-section" style="margin-bottom:0;">
+                <div class="copy-section" id="boxCopyIG" style="margin-bottom:0; display:none;">
                     <div class="copy-header">
                         <div class="copy-label"><span class="social-icon" style="color:#E1306C;">${getSocialSvg('instagram')}</span> Instagram</div>
                         <button class="btn btn-sm btn-secondary btn-copy-text" onclick="copyText('formCopyIG')"><svg class="svg-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copiar</button>
@@ -1037,12 +1037,20 @@ function renderContentForm(data) {
                     <textarea class="form-control" id="formCopyIG" rows="3" spellcheck="true" lang="es" placeholder="Copy para Instagram...">${escHtml(data.detalle?.copy_instagram || '')}</textarea>
                 </div>
                 
-                <div class="copy-section" style="margin-bottom:0;">
+                <div class="copy-section" id="boxCopyTT" style="margin-bottom:0; display:none;">
                     <div class="copy-header">
                         <div class="copy-label"><span class="social-icon" style="color:var(--text-color);">${getSocialSvg('tiktok')}</span> TikTok</div>
                         <button class="btn btn-sm btn-secondary btn-copy-text" onclick="copyText('formCopyTT')"><svg class="svg-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copiar</button>
                     </div>
                     <textarea class="form-control" id="formCopyTT" rows="3" spellcheck="true" lang="es" placeholder="Copy para TikTok...">${escHtml(data.detalle?.copy_tiktok || '')}</textarea>
+                </div>
+                
+                <div class="copy-section" id="boxCopyLI" style="margin-bottom:0; display:none;">
+                    <div class="copy-header">
+                        <div class="copy-label"><span class="social-icon" style="color:#0077b5;">${getSocialSvg('linkedin')}</span> LinkedIn</div>
+                        <button class="btn btn-sm btn-secondary btn-copy-text" onclick="copyText('formCopyLI')"><svg class="svg-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copiar</button>
+                    </div>
+                    <textarea class="form-control" id="formCopyLI" rows="3" spellcheck="true" lang="es" placeholder="Copy para LinkedIn...">${escHtml(data.detalle?.copy_linkedin || '')}</textarea>
                 </div>
             </div>
         </div>`;
@@ -1142,10 +1150,35 @@ function renderContentForm(data) {
     }
 
     document.getElementById('modalBody').innerHTML = html;
+    
+    // Setup dynamic copy visibility based on red social select
+    const redSocialSelect = document.getElementById('form_red_social');
+    if (redSocialSelect) {
+        redSocialSelect.addEventListener('change', updateCopyVisibility);
+        setTimeout(updateCopyVisibility, 10);
+    } else {
+        setTimeout(updateCopyVisibility, 10); // fallback if field is missing
+    }
+    
     // If video mode, calculate initial duration
     setTimeout(updateTotalDuration, 50);
     // Enable spellcheck & char counters
     setTimeout(initSpellcheckAndCounters, 60);
+}
+
+function updateCopyVisibility() {
+    const rs = (document.getElementById('form_red_social')?.value || '').toUpperCase();
+    const boxFB = document.getElementById('boxCopyFB');
+    const boxIG = document.getElementById('boxCopyIG');
+    const boxTT = document.getElementById('boxCopyTT');
+    const boxLI = document.getElementById('boxCopyLI');
+    
+    const showAll = !rs || rs.includes('SELECCIONAR');
+    
+    if (boxFB) boxFB.style.display = (showAll || rs.includes('FACEBOOK')) ? 'block' : 'none';
+    if (boxIG) boxIG.style.display = (showAll || rs.includes('INSTAGRAM')) ? 'block' : 'none';
+    if (boxTT) boxTT.style.display = (showAll || rs.includes('TIKTOK')) ? 'block' : 'none';
+    if (boxLI) boxLI.style.display = (showAll || rs.includes('LINKEDIN')) ? 'block' : 'none';
 }
 
 function initSpellcheckAndCounters() {
@@ -2415,7 +2448,7 @@ async function saveUser() {
 }
 
 async function deleteUser(id) {
-    if (!await confirmCustom('¿Estás seguro de eliminar este usuario? (se desactivará)')) return;
+    if (!confirm('¿Estás seguro de eliminar este usuario? (se desactivará)')) return;
     try {
         await apiPost('usuarios.php?action=delete', { id });
         showToast('Usuario eliminado', 'success');
