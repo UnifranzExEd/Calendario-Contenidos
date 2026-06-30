@@ -5,7 +5,10 @@ $info = [
     'php_version' => PHP_VERSION,
     'pdo_drivers' => PDO::getAvailableDrivers(),
     'pgsql_loaded' => extension_loaded('pdo_pgsql'),
-    'test' => 'v3'
+    'test' => 'v3',
+    'query_string' => $_SERVER['QUERY_STRING'] ?? 'NOT SET',
+    'request_uri' => $_SERVER['REQUEST_URI'] ?? 'NOT SET',
+    'get_params' => $_GET,
 ];
 
 // Try connecting
