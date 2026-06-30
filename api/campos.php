@@ -19,6 +19,11 @@ switch ($action) {
         $grouped = [];
         foreach (($campos['data'] ?? []) as $r) {
             if (!is_array($r)) continue;
+            $r['nombre_display'] = $r['etiqueta'] ?? $r['nombre_campo'];
+            $r['tipo_campo'] = $r['tipo'] ?? 'texto';
+            $r['dropdown_grupo'] = $r['opciones'] ?? null;
+            $r['visible'] = $r['visible'] ?? 1;
+            
             $pid  = $r['pestana_id'] ?? 0;
             $slug = $slugMap[$pid] ?? 'default';
             $grouped[$slug][] = $r;
@@ -60,11 +65,13 @@ switch ($action) {
         $maxRes = sb_get('pestana_campos', 'pestana_id=eq.' . $pid . '&select=orden&order=orden.desc&limit=1');
         $orden  = intval($maxRes['data'][0]['orden'] ?? 0) + 1;
         $res    = sb_post('pestana_campos', [
-            'pestana_id' => $pid, 'nombre_campo' => $input['nombre_campo'] ?? 'custom_'.time(),
-            'nombre_display' => $input['nombre_display'] ?? 'Nuevo Campo',
-            'tipo_campo' => $input['tipo_campo'] ?? 'texto',
-            'dropdown_grupo' => $input['dropdown_grupo'] ?? null,
-            'orden' => $orden, 'ancho' => $input['ancho'] ?? '150px',
+            'pestana_id' => $pid, 
+            'nombre_campo' => $input['nombre_campo'] ?? 'custom_'.time(),
+            'etiqueta' => $input['nombre_display'],
+            'tipo' => $input['tipo_campo'],
+            'opciones' => $input['dropdown_grupo'] ?? null,
+            'orden' => $orden, 
+            'ancho' => $input['ancho'] ?? '150px',
         ]);
         jsonResponse(['success' => true, 'id' => $res['data'][0]['id'] ?? null], 201);
 
