@@ -30,8 +30,14 @@ switch ($action) {
             'email'    => $input['email'],
             'password' => password_hash($input['password'], PASSWORD_BCRYPT),
             'rol'      => $input['rol']      ?? 'community',
-            'activo'   => true,
+            'activo'   => 1,
         ]);
+        if ($res['code'] >= 400 || empty($res['data'])) {
+            $errMsg = 'Error al crear usuario';
+            if (is_array($res['data']) && isset($res['data']['message'])) $errMsg = $res['data']['message'];
+            if (is_array($res['data']) && isset($res['data']['details'])) $errMsg .= ': ' . $res['data']['details'];
+            jsonResponse(['error' => $errMsg], 400);
+        }
         jsonResponse(['success' => true, 'id' => $res['data'][0]['id'] ?? null], 201);
     case 'update':
         if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);
