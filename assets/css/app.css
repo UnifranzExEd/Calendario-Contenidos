@@ -1519,7 +1519,7 @@ textarea.form-control {
     border: 1px solid rgba(255,255,255,0.05);
     border-left-width: 3px;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .calendar-event:hover {

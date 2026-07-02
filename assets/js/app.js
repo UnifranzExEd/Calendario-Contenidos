@@ -691,8 +691,8 @@ function renderCalendar() {
                           ${onClickAttr} 
                           oncontextmenu="showContextMenu(event, ${c.id})"
                           title="${isGhostForPP ? 'Contenido en elaboración (Por enviar a Post)' : escHtml(titulo) + ' | ' + escHtml(c.red_social||'') + ' | ' + escHtml(c.formato||'') + ' | ' + escHtml(c.estado||'')}">
-                        ${isAprobado ? `<div style="position:absolute; top:-1px; right:-1px; background:#10b981; color:#fff; font-size:0.55rem; font-weight:700; padding:1px 5px; border-radius:0 3px 0 5px; letter-spacing:0.04em; display:flex; align-items:center; gap:2px; line-height:1.6; z-index:2;">
-                            <svg viewBox="0 0 24 24" style="width:8px;height:8px;stroke:#fff;stroke-width:3;fill:none;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        ${isAprobado ? `<div style="position:absolute; top:0; right:0; background:#10b981; color:#fff; font-size:0.52rem; font-weight:800; padding:2px 6px; border-radius:0 4px 0 6px; letter-spacing:0.06em; display:flex; align-items:center; gap:2px; line-height:1.6; z-index:10; pointer-events:none;">
+                            <svg viewBox="0 0 24 24" style="width:7px;height:7px;stroke:#fff;stroke-width:3.5;fill:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"></polyline></svg>
                             APROBADO
                         </div>` : ''}
                         <div class="cal-ev-top">
