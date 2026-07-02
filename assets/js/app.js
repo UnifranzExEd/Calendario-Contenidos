@@ -1187,11 +1187,10 @@ function renderContentForm(data) {
     // Setup dynamic copy visibility based on red social select
     const redSocialSelect = document.getElementById('form_red_social');
     if (redSocialSelect) {
-        redSocialSelect.addEventListener('change', updateCopyVisibility);
-        setTimeout(updateCopyVisibility, 10);
-    } else {
-        setTimeout(updateCopyVisibility, 10); // fallback if field is missing
+        redSocialSelect.addEventListener('change', () => updateCopyVisibility());
     }
+    // Use the actual data value on first render (select may not match yet)
+    setTimeout(() => updateCopyVisibility(data.red_social || ''), 10);
     
     // If video mode, calculate initial duration
     setTimeout(updateTotalDuration, 50);
@@ -1199,8 +1198,13 @@ function renderContentForm(data) {
     setTimeout(initSpellcheckAndCounters, 60);
 }
 
-function updateCopyVisibility() {
-    const rs = (document.getElementById('form_red_social')?.value || '').toUpperCase();
+function updateCopyVisibility(overrideValue) {
+    // Use override (passed on initial render) or read from the select on change events
+    const rawVal = overrideValue !== undefined
+        ? overrideValue
+        : (document.getElementById('form_red_social')?.value || '');
+    const rs = rawVal.toUpperCase();
+
     const boxFB = document.getElementById('boxCopyFB');
     const boxIG = document.getElementById('boxCopyIG');
     const boxTT = document.getElementById('boxCopyTT');
@@ -1208,13 +1212,17 @@ function updateCopyVisibility() {
     
     const showAll = !rs || rs.includes('SELECCIONAR');
     
-    // Meta includes Facebook and Instagram
-    const hasMeta = rs.includes('META');
+    // "Meta" = Facebook + Instagram
+    const hasMeta     = rs.includes('META');
+    const hasFacebook = rs.includes('FACEBOOK') || hasMeta;
+    const hasInstagram= rs.includes('INSTAGRAM') || hasMeta;
+    const hasTikTok   = rs.includes('TIKTOK');
+    const hasLinkedIn = rs.includes('LINKEDIN');
     
-    if (boxFB) boxFB.style.display = (showAll || rs.includes('FACEBOOK') || hasMeta) ? 'block' : 'none';
-    if (boxIG) boxIG.style.display = (showAll || rs.includes('INSTAGRAM') || hasMeta) ? 'block' : 'none';
-    if (boxTT) boxTT.style.display = (showAll || rs.includes('TIKTOK')) ? 'block' : 'none';
-    if (boxLI) boxLI.style.display = (showAll || rs.includes('LINKEDIN')) ? 'block' : 'none';
+    if (boxFB) boxFB.style.display = (showAll || hasFacebook)  ? 'block' : 'none';
+    if (boxIG) boxIG.style.display = (showAll || hasInstagram) ? 'block' : 'none';
+    if (boxTT) boxTT.style.display = (showAll || hasTikTok)    ? 'block' : 'none';
+    if (boxLI) boxLI.style.display = (showAll || hasLinkedIn)  ? 'block' : 'none';
 }
 
 function initSpellcheckAndCounters() {
