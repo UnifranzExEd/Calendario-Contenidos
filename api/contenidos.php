@@ -151,7 +151,7 @@ switch ($action) {
         }
         // Slides
         foreach (($input['slides'] ?? []) as $i => $slide) {
-            sb_post('contenido_slides', ['contenido_id' => $cid, 'numero_slide' => $i+1, 'texto' => $slide['texto'] ?? '', 'notas' => $slide['notas'] ?? null]);
+            sb_post('contenido_slides', ['contenido_id' => $cid, 'orden' => $i+1, 'texto' => $slide['texto'] ?? '']);
         }
         // History
         sb_post('historial_estado', ['contenido_id' => $cid, 'estado_nuevo' => $body['estado'], 'usuario_id' => $user['id'], 'comentario' => 'Contenido creado']);
@@ -205,7 +205,7 @@ switch ($action) {
         if (isset($input['slides'])) {
             sb_delete('contenido_slides', 'contenido_id=eq.' . $id);
             foreach ($input['slides'] as $i => $slide) {
-                sb_post('contenido_slides', ['contenido_id' => $id, 'numero_slide' => $i+1, 'texto' => $slide['texto'] ?? '', 'notas' => $slide['notas'] ?? null]);
+                sb_post('contenido_slides', ['contenido_id' => $id, 'orden' => $i+1, 'texto' => $slide['texto'] ?? '']);
             }
         }
         jsonResponse(['success' => true]);

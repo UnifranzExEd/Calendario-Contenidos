@@ -1045,7 +1045,7 @@ function renderContentForm(data) {
     const isVideo = (data.formato || '').toLowerCase().includes('video') || (data.formato || '').toLowerCase().includes('reel');
     const sectionLabel = isVideo 
         ? '<svg class="svg-icon" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg> Guión del Video' 
-        : '<svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg> Contenido por Slides';
+        : '<svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg> COPY';
     const itemLabel = isVideo ? 'Escena' : 'Slide';
     const addLabel = isVideo ? '+ Agregar Escena' : '+ Agregar Slide';
     
@@ -1054,6 +1054,15 @@ function renderContentForm(data) {
         <div id="slidesContainer" data-item-label="${itemLabel}">`;
     
     const slides = data.slides || [];
+    
+    // Migración: si no hay slides, usar el antiguo copy en el primer slide
+    if (slides.length === 0 && !isVideo) {
+        const legacyCopy = data.detalle?.copy_facebook || data.detalle?.copy_instagram || data.detalle?.copy_tiktok || data.detalle?.copy_linkedin || '';
+        if (legacyCopy) {
+            slides.push({ texto: legacyCopy, notas: '' });
+        }
+    }
+
     slides.forEach((slide, i) => {
         html += renderSlideItem(i, slide.texto || '', slide.notas || '', isVideo, isPP);
     });
@@ -1068,7 +1077,7 @@ function renderContentForm(data) {
     // ── Copy section ──
     if (!isPP) {
         html += `<div class="editor-section">
-            <div class="editor-section-title">Copy / Caption por Red Social</div>
+            <div class="editor-section-title">HEADLINE</div>
             
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
                 <div class="copy-section" id="boxCopyFB" style="margin-bottom:0; display:none;">

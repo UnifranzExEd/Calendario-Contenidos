@@ -28,24 +28,28 @@ def sb_request(method, path, data=None):
 def sb_post(table, data): return sb_request("POST", table, data)
 def sb_delete(table, params): return sb_request("DELETE", f"{table}?{params}")
 
-# DB VARCHAR LIMITS (from schema.sql)
-# etapa varchar(10), formato varchar(50), buyer varchar(50),
-# aspecto varchar(50), pilar varchar(50), red_social varchar(30),
-# atributo varchar(80), horario varchar(50), semana varchar(50)
-
 def truncate(val, maxlen):
     if val and len(val) > maxlen:
         return val[:maxlen]
     return val
 
 # ──────────────────────────────────────────────────────────────────────
-# Import from correct Excel sheet
+# STEP 1: Clean old data
 # ──────────────────────────────────────────────────────────────────────
-print("Importing from 'Launch Operating Planner_Julio'...")
-df = pd.read_excel('Calendario_Julio_2026_ExEd (1).xlsx', sheet_name='Launch Operating Planner_Julio')
+print("STEP 1: Cleaning old data...")
+sb_delete("contenido_slides", "id=gt.0")
+sb_delete("contenido_detalle", "id=gt.0")
+sb_delete("contenidos", "id=gt.0")
+print("  Done.")
+
+# ──────────────────────────────────────────────────────────────────────
+# STEP 2: Import from the fixed Excel
+# ──────────────────────────────────────────────────────────────────────
+print("\nSTEP 2: Importing from 'Calendario_Julio_2026 fijo.xlsx'...")
+df = pd.read_excel('Calendario_Julio_2026 fijo.xlsx', sheet_name='Launch Operating Planner_Julio')
 
 posts = []
-detalles_raw = []
+extra_data = []
 
 for i, row in df.iterrows():
     fecha = row['Fecha']
@@ -61,75 +65,127 @@ for i, row in df.iterrows():
             s = truncate(s, maxlen)
         return s
     
+    canal = val('Canal', 30)
+    
     post = {
         "pestana_id": 1,
         "mes": "JULIO",
         "anio": 2026,
         "fecha": fecha.strftime('%Y-%m-%d'),
         "semana": val('Semana', 50),
-        "formato": val('Serie Editorial', 50),      # Serie Editorial
-        "tema": val('Conversación'),                 # Conversación (text, no limit)
-        "idea": val('Creencia'),                     # Creencia (text, no limit)
-        "buyer": val('Comunidad', 50),               # Comunidad
-        "pilar": val('3P', 50),                      # 3P
-        "etapa": val('Funnel', 10),                  # Funnel — TRUNCATED to 10
-        "aspecto": val('Emoción', 50),               # Emoción
-        "atributo": val('Objetivo', 80),             # Objetivo
-        "red_social": val('Canal', 30),              # Canal
-        "estado": val('Estado', 30) or 'Pendiente',  # Estado
-        "horario": val('KPI Principal', 50),         # KPI Principal
-        "observaciones": val('Observaciones'),       # Observaciones
+        "formato": val('Serie Editorial', 50),
+        "tema": val('Conversación'),
+        "idea": val('Creencia'),
+        "buyer": val('Comunidad', 50),
+        "pilar": val('3P', 50),
+        "etapa": val('Funnel', 10),
+        "aspecto": val('Emoción', 50),
+        "atributo": val('Objetivo', 80),
+        "red_social": canal,
+        "estado": val('Estado', 30) or 'Pendiente',
+        "horario": val('KPI Principal', 50),
+        "observaciones": val('Observaciones'),
         "creado_por": 1,
     }
-    
     posts.append(post)
-    detalles_raw.append({
-        "titulo_post": val('Headline', 500),
-        "copy_facebook": val('Copy'),
-        "copy_instagram": val('CTA'),
-        "copy_tiktok": None,
+    
+    # Build detalles based on canal logic:
+    # "Meta" = Facebook + Instagram
+    # "LinkedIn" = LinkedIn only
+    # "LinkedIn + Meta" = LinkedIn + Facebook + Instagram
+    headline = val('Headline')
+    copy_text = val('Copy')
+    cta = val('CTA')
+    
+    extra_data.append({
+        "canal": canal,
+        "headline": headline,
+        "copy": copy_text,
+        "cta": cta,
+        "formato_visual": val('Formato'),
+        "organico": val('Orgánico'),
+        "pauta": val('Pauta'),
+        "activo_fuente": val('Activo Fuente'),
+        "reutilizacion": val('Reutilización'),
+        "owner": val('Owner'),
     })
 
-# Check etapa truncation issues
-print("\n  Funnel values after truncation:")
-funnels = set(p['etapa'] for p in posts if p['etapa'])
-for f in funnels:
-    print(f"    '{f}' ({len(f)} chars)")
-
-# Fix: Consideration -> Consider, Conversion -> Convert (or use abbreviations)
-# Actually let's use smart abbreviations
-FUNNEL_MAP = {
-    "Awareness": "Awareness",       # 9 chars - fits!
-    "Consideration": "Consider",     # 8 chars
-    "Conversion": "Conversion",      # 10 chars - fits!
-}
-for p in posts:
-    if p['etapa'] in FUNNEL_MAP:
-        p['etapa'] = FUNNEL_MAP[p['etapa']]
-
-print("\n  Funnel values after smart mapping:")
-funnels = set(p['etapa'] for p in posts if p['etapa'])
-for f in funnels:
-    print(f"    '{f}' ({len(f)} chars)")
-
-# Insert posts
+# Insert contenidos
 result = sb_post("contenidos", posts)
-if result:
-    print(f"\n  ✅ Inserted {len(result)} contenidos.")
+if not result:
+    print("  ❌ Failed to insert contenidos!")
+    exit(1)
+
+print(f"  ✅ Inserted {len(result)} contenidos.")
+
+# ──────────────────────────────────────────────────────────────────────
+# STEP 3: Insert contenido_detalle (key-value format)
+# ──────────────────────────────────────────────────────────────────────
+print("\nSTEP 3: Inserting detalles y slides...")
+detalles = []
+slides_rows = []
+
+for idx, item in enumerate(result):
+    cid = item['id']
+    ex = extra_data[idx]
+    canal = ex['canal'] or ''
     
-    # Insert detalles
-    detalles = []
-    for idx, item in enumerate(result):
-        det = detalles_raw[idx].copy()
-        det["contenido_id"] = item['id']
-        detalles.append(det)
-    
-    det_result = sb_post("contenido_detalle", detalles)
-    if det_result:
-        print(f"  ✅ Inserted {len(det_result)} detalles (Headline/Copy/CTA).")
-    else:
-        print("  ⚠️  Warning: Could not insert detalles.")
+    # Col O (Headline) → slide 1 en contenido_slides (sección COPY de la UI)
+    if ex['headline']:
+        slides_rows.append({
+            "contenido_id": cid,
+            "orden": 1,
+            "texto": ex['headline']
+        })
+
+    # Col P (Copy) → HEADLINE section (copy_facebook / copy_instagram / copy_linkedin)
+    # Meta = Facebook + Instagram | LinkedIn = LinkedIn only
+    if ex['copy']:
+        detalles.append({"contenido_id": cid, "campo": "copy", "valor": ex['copy']})
+        if 'Meta' in canal:
+            detalles.append({"contenido_id": cid, "campo": "copy_facebook", "valor": ex['copy']})
+            detalles.append({"contenido_id": cid, "campo": "copy_instagram", "valor": ex['copy']})
+        if 'LinkedIn' in canal:
+            detalles.append({"contenido_id": cid, "campo": "copy_linkedin", "valor": ex['copy']})
+
+    if ex['cta']:
+        detalles.append({"contenido_id": cid, "campo": "cta", "valor": ex['cta']})
+
+    # Store other extra fields
+    for campo in ['formato_visual', 'organico', 'pauta', 'activo_fuente', 'reutilizacion', 'owner']:
+        if ex[campo]:
+            detalles.append({"contenido_id": cid, "campo": campo, "valor": ex[campo]})
+
+det_result = sb_post("contenido_detalle", detalles)
+if det_result:
+    print(f"  \u2705 Inserted {len(det_result)} detalles.")
 else:
-    print("  ❌ ERROR: Failed to insert contenidos!")
+    print("  \u26a0\ufe0f  Warning: Could not insert detalles.")
+
+# Insert slides (Col O = Headline → slide 1 COPY section)
+if slides_rows:
+    sl_result = sb_post("contenido_slides", slides_rows)
+    if sl_result:
+        print(f"  \u2705 Inserted {len(sl_result)} slides (Headlines).")
+    else:
+        print("  \u26a0\ufe0f  Warning: Could not insert slides.")
+else:
+    print("  \u2139\ufe0f  No slides to insert.")
+
+# ──────────────────────────────────────────────────────────────────────
+# STEP 4: Verify
+# ──────────────────────────────────────────────────────────────────────
+print("\n── Verification ──")
+for c in result[:5]:
+    print(f"  {c['fecha']} | {c['formato']} | {c['tema']} | {c['pilar']} | {c['red_social']}")
+print(f"  ... and {len(result)-5} more")
+
+# Check copy distribution
+meta_count = sum(1 for d in detalles if d['campo'] == 'copy_facebook')
+linkedin_count = sum(1 for d in detalles if d['campo'] == 'copy_linkedin')
+print(f"\n  Copy distribution:")
+print(f"    Facebook copies: {meta_count}")
+print(f"    Instagram copies: {sum(1 for d in detalles if d['campo'] == 'copy_instagram')}")
+print(f"    LinkedIn copies: {linkedin_count}")
 
 print("\n🎉 Import complete!")
