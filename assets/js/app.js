@@ -684,11 +684,17 @@ function renderCalendar() {
 
             let assignedDetails = `<div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px; font-weight:600;">${escHtml(ppNameDisplay)}</div>`;
             
+            const isAprobado = !isGhostForPP && c.estado === 'Aprobado';
+
             html += `<div class="calendar-event${ghostClass}${glowClass}${unassignedClass}${communityGlowClass}" 
-                          style="border-left: 3px solid ${color};"
+                          style="border-left: 3px solid ${color}; position:relative;"
                           ${onClickAttr} 
                           oncontextmenu="showContextMenu(event, ${c.id})"
                           title="${isGhostForPP ? 'Contenido en elaboración (Por enviar a Post)' : escHtml(titulo) + ' | ' + escHtml(c.red_social||'') + ' | ' + escHtml(c.formato||'') + ' | ' + escHtml(c.estado||'')}">
+                        ${isAprobado ? `<div style="position:absolute; top:-1px; right:-1px; background:#10b981; color:#fff; font-size:0.55rem; font-weight:700; padding:1px 5px; border-radius:0 3px 0 5px; letter-spacing:0.04em; display:flex; align-items:center; gap:2px; line-height:1.6; z-index:2;">
+                            <svg viewBox="0 0 24 24" style="width:8px;height:8px;stroke:#fff;stroke-width:3;fill:none;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            APROBADO
+                        </div>` : ''}
                         <div class="cal-ev-top">
                             <span class="cal-ev-social">${isGhostForPP ? '<svg class="svg-icon" viewBox="0 0 24 24" style="opacity:0.5"><path d="M5 22h14"></path><path d="M5 2h14"></path><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"></path><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"></path></svg>' : socialIcon}</span>
                             <span class="cal-ev-format">${isGhostForPP ? '' : formatoIcon}</span>
