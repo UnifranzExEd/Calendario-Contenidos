@@ -1023,12 +1023,18 @@ function renderContentForm(data) {
     html += `<div style="flex:1; display:flex; flex-direction:column; justify-content:space-between; min-width:0;">`;
     html += `<div style="display:flex; flex-direction:column; gap:12px;">`;
     
-    // Google Drive Made (Assets / Raw files)
+    // Google Drive Madre (Assets / Raw files)
     html += `<div>
-        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">Google Drive Made</label>
-        <div style="position:relative;">
-            <svg class="svg-icon" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:var(--text-muted);" viewBox="0 0 24 24"><path d="M4.585 18l2.97-5.143H22.51l-2.97 5.143H4.585zM2.8 14.857L10.371 1.714h5.943l-7.57 13.143H2.8zM12.115 1.714L21.43 18H15.486L6.17 1.714h5.943z"></path></svg>
-            <input type="url" id="form_enlace_contenido" class="form-control" style="padding-left:32px; font-size:0.8rem;" value="${escHtml(data.enlace_contenido || '')}" placeholder="https://drive.google.com/...">
+        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">Drive Madre</label>
+        <div style="display:flex; gap:8px;">
+            <div style="position:relative; flex:1;">
+                <svg class="svg-icon" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:var(--text-muted);" viewBox="0 0 24 24"><path d="M4.585 18l2.97-5.143H22.51l-2.97 5.143H4.585zM2.8 14.857L10.371 1.714h5.943l-7.57 13.143H2.8zM12.115 1.714L21.43 18H15.486L6.17 1.714h5.943z"></path></svg>
+                <input type="url" id="form_enlace_contenido" class="form-control" style="padding-left:32px; font-size:0.8rem;" value="${escHtml(data.enlace_contenido || '')}" placeholder="https://drive.google.com/...">
+            </div>
+            <a href="${escHtml(data.enlace_contenido || '#')}" target="_blank" class="btn btn-secondary" style="display:flex; align-items:center; gap:6px; padding:6px 12px; white-space:nowrap; text-decoration:none;" ${!data.enlace_contenido ? 'onclick="event.preventDefault(); alert(\\'Primero guarda un enlace para abrirlo\\')"' : ''}>
+                <svg class="svg-icon" viewBox="0 0 24 24" style="width:14px;height:14px;color:#34a853;"><path d="M4.585 18l2.97-5.143H22.51l-2.97 5.143H4.585zM2.8 14.857L10.371 1.714h5.943l-7.57 13.143H2.8zM12.115 1.714L21.43 18H15.486L6.17 1.714h5.943z"></path></svg>
+                Google Drive Madre
+            </a>
         </div>
     </div>`;
 
