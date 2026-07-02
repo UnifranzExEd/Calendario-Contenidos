@@ -1022,9 +1022,29 @@ function renderContentForm(data) {
     // RIGHT HALF: Links + PP Checkbox
     html += `<div style="flex:1; display:flex; flex-direction:column; justify-content:space-between; min-width:0;">`;
     html += `<div style="display:flex; flex-direction:column; gap:12px;">`;
-    // Render Link Fields (Diseño Final, Enlace Publicado)
-    if (linkFields.length > 0) {
-        linkFields.forEach(c => html += renderField(c));
+    
+    // Google Drive Made (Assets / Raw files)
+    html += `<div>
+        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">Google Drive Made</label>
+        <div style="position:relative;">
+            <svg class="svg-icon" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:var(--text-muted);" viewBox="0 0 24 24"><path d="M4.585 18l2.97-5.143H22.51l-2.97 5.143H4.585zM2.8 14.857L10.371 1.714h5.943l-7.57 13.143H2.8zM12.115 1.714L21.43 18H15.486L6.17 1.714h5.943z"></path></svg>
+            <input type="url" id="form_enlace_contenido" class="form-control" style="padding-left:32px; font-size:0.8rem;" value="${escHtml(data.enlace_contenido || '')}" placeholder="https://drive.google.com/...">
+        </div>
+    </div>`;
+
+    // Diseño Terminado
+    html += `<div>
+        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">Link del Diseño Terminado</label>
+        <div style="position:relative;">
+            <svg class="svg-icon" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:var(--text-muted);" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+            <input type="url" id="form_enlace_diseno" class="form-control" style="padding-left:32px; font-size:0.8rem;" value="${escHtml(data.enlace_diseno || '')}" placeholder="https://drive.google.com/...">
+        </div>
+    </div>`;
+
+    // Optionally render other configured links (like enlace_publicado)
+    const otherLinks = linkFields.filter(c => c.nombre_campo !== 'enlace_contenido' && c.nombre_campo !== 'enlace_diseno');
+    if (otherLinks.length > 0) {
+        otherLinks.forEach(c => html += renderField(c));
     }
     html += `</div>`;
 
@@ -1483,7 +1503,7 @@ async function saveContent() {
         { nombre_campo: 'tema' }, { nombre_campo: 'fecha' }, { nombre_campo: 'buyer' },
         { nombre_campo: 'pilar' }, { nombre_campo: 'atributo' }, { nombre_campo: 'red_social' },
         { nombre_campo: 'estado' }, { nombre_campo: 'formato' }, { nombre_campo: 'horario' },
-        { nombre_campo: 'enlace_publicado' }, { nombre_campo: 'enlace_diseno' },
+        { nombre_campo: 'enlace_publicado' }, { nombre_campo: 'enlace_diseno' }, { nombre_campo: 'enlace_contenido' },
     ];
     const STANDARD_NAMES = new Set(STANDARD_CAMPOS.map(c => c.nombre_campo));
     const dbCampos = (state.campos[targetTab] || []).filter(c => !STANDARD_NAMES.has(c.nombre_campo));
