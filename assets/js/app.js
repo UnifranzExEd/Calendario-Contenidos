@@ -1208,8 +1208,11 @@ function updateCopyVisibility() {
     
     const showAll = !rs || rs.includes('SELECCIONAR');
     
-    if (boxFB) boxFB.style.display = (showAll || rs.includes('FACEBOOK')) ? 'block' : 'none';
-    if (boxIG) boxIG.style.display = (showAll || rs.includes('INSTAGRAM')) ? 'block' : 'none';
+    // Meta includes Facebook and Instagram
+    const hasMeta = rs.includes('META');
+    
+    if (boxFB) boxFB.style.display = (showAll || rs.includes('FACEBOOK') || hasMeta) ? 'block' : 'none';
+    if (boxIG) boxIG.style.display = (showAll || rs.includes('INSTAGRAM') || hasMeta) ? 'block' : 'none';
     if (boxTT) boxTT.style.display = (showAll || rs.includes('TIKTOK')) ? 'block' : 'none';
     if (boxLI) boxLI.style.display = (showAll || rs.includes('LINKEDIN')) ? 'block' : 'none';
 }
