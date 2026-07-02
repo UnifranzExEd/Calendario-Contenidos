@@ -7,28 +7,28 @@
 /* ── CSS Variables ── */
 :root {
     /* ── Neumorphism Dark Red Palette ── */
-    --bg-primary:   #161616;
-    --bg-secondary: #1a1a1a;
-    --bg-tertiary:  #1e1e1e;
-    --bg-card:      #1e1e1e;
-    --bg-glass:     rgba(255,255,255,0.02);
-    --bg-glass-hover: rgba(255,255,255,0.04);
-    --bg-input:     #1a1a1a;
-    --bg-input-focus: #202020;
+    --bg-primary:   #121212;
+    --bg-secondary: #161616;
+    --bg-tertiary:  #1a1a1a;
+    --bg-card:      #1a1a1a;
+    --bg-glass:     rgba(255,255,255,0.03);
+    --bg-glass-hover: rgba(255,255,255,0.06);
+    --bg-input:     #161616;
+    --bg-input-focus: #1c1c1c;
 
-    --border-color: rgba(255,255,255,0.06);
-    --border-light: rgba(255,255,255,0.10);
-    --border-focus: rgba(229,57,53,0.6);
+    --border-color: rgba(255,255,255,0.08);
+    --border-light: rgba(255,255,255,0.12);
+    --border-focus: rgba(255,0,0,0.6);
 
-    --text-primary:   #e8e8e8;
-    --text-secondary: #9a9a9a;
-    --text-muted:     #666666;
-    --text-accent:    #e53935;
+    --text-primary:   #f5f5f5;
+    --text-secondary: #a3a3a3;
+    --text-muted:     #737373;
+    --text-accent:    #ff0000;
 
-    --accent:       #e53935;
-    --accent-hover: #ef5350;
-    --accent-dark:  #b71c1c;
-    --accent-glow:  rgba(229,57,53,0.35);
+    --accent:       #ff0000;
+    --accent-hover: #ff3333;
+    --accent-dark:  #cc0000;
+    --accent-glow:  rgba(255,0,0,0.4);
 
     --success: #2e7d32;
     --warning: #f57f17;
@@ -36,20 +36,20 @@
     --info:    #0277bd;
 
     /* ── Neumorphic Shadows ── */
-    --nm-raised:  8px 8px 16px #0d0d0d, -8px -8px 16px #252525;
-    --nm-inset:   inset 6px 6px 12px #0d0d0d, inset -6px -6px 12px #252525;
-    --nm-sm:      4px 4px 8px #0d0d0d, -4px -4px 8px #252525;
-    --nm-red-glow: 0 0 20px rgba(0,0,0,0.4), 0 0 60px rgba(0,0,0,0.2);
+    --nm-raised:  8px 8px 16px #090909, -8px -8px 16px #1b1b1b;
+    --nm-inset:   inset 6px 6px 12px #090909, inset -6px -6px 12px #1b1b1b;
+    --nm-sm:      4px 4px 8px #090909, -4px -4px 8px #1b1b1b;
+    --nm-red-glow: 0 0 20px rgba(255,0,0,0.4), 0 0 60px rgba(255,0,0,0.2);
 
     --shadow-sm:   var(--nm-sm);
     --shadow-md:   var(--nm-raised);
-    --shadow-lg:   12px 12px 24px #0a0a0a, -12px -12px 24px #2a2a2a;
+    --shadow-lg:   12px 12px 24px #070707, -12px -12px 24px #1d1d1d;
     --shadow-glow: var(--nm-red-glow);
 
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 18px;
-    --radius-xl: 24px;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
 
     --sidebar-width: 260px;
     --header-height: 64px;

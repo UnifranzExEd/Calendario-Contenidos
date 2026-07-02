@@ -4,14 +4,14 @@
  * Compatible con Supabase (PostgreSQL) y Vercel Serverless
  */
 
-// Supabase PostgreSQL credentials
-define('DB_HOST',   getenv('DB_HOST')   ?: 'db.fhnolvqocysnjwgsdflq.supabase.co');
-define('DB_NAME',   getenv('DB_NAME')   ?: 'postgres');
-define('DB_USER',   getenv('DB_USER')   ?: 'postgres');
-define('DB_PASS',   'P6mIlecuZClU1qyU'); // hardcoded - Supabase password
-define('DB_PORT',   getenv('DB_PORT')   ?: '5432');
-define('DB_DRIVER', 'pgsql');            // always PostgreSQL
-define('DB_CHARSET', 'utf8');
+// InfinityFree MySQL credentials
+define('DB_HOST',   getenv('DB_HOST')   ?: 'sql103.infinityfree.com');
+define('DB_NAME',   getenv('DB_NAME')   ?: 'if0_42313714_exeed');
+define('DB_USER',   getenv('DB_USER')   ?: 'if0_42313714');
+define('DB_PASS',   'eWsGmSb954rky4');
+define('DB_PORT',   getenv('DB_PORT')   ?: '3306');
+define('DB_DRIVER', 'mysql');            // always MySQL
+define('DB_CHARSET', 'utf8mb4');
 
 // App config
 define('APP_NAME', 'UNIFRANZ Executive Education');
