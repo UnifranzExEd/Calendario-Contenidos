@@ -66,7 +66,13 @@ switch ($action) {
         $c['pestana_color']  = $pst['color']  ?? '';
 
         $detalle = sb_get('contenido_detalle', 'contenido_id=eq.' . $id);
-        $c['detalle'] = $detalle['data'][0] ?? null;
+        $flatDetalle = [];
+        foreach (($detalle['data'] ?? []) as $row) {
+            if (isset($row['campo'])) {
+                $flatDetalle[$row['campo']] = $row['valor'] ?? '';
+            }
+        }
+        $c['detalle'] = $flatDetalle;
 
         $slides = sb_get('contenido_slides', 'contenido_id=eq.' . $id);
         $c['slides'] = $slides['data'] ?? [];
@@ -134,14 +140,14 @@ switch ($action) {
         if (!$cid) jsonResponse(['error' => 'Error al crear'], 500);
 
         // Detail
-        if (isset($input['titulo_post']) || isset($input['copy_facebook'])) {
-            sb_post('contenido_detalle', [
-                'contenido_id'  => $cid,
-                'titulo_post'   => $input['titulo_post']    ?? null,
-                'copy_facebook' => $input['copy_facebook']  ?? null,
-                'copy_instagram'=> $input['copy_instagram'] ?? null,
-                'copy_tiktok'   => $input['copy_tiktok']    ?? null,
-            ]);
+        $detBody = [];
+        foreach (['titulo_post','copy_facebook','copy_instagram','copy_tiktok','copy_linkedin','cta'] as $f) {
+            if (isset($input[$f])) {
+                $detBody[] = ['contenido_id' => $cid, 'campo' => $f, 'valor' => $input[$f]];
+            }
+        }
+        if (!empty($detBody)) {
+            sb_post('contenido_detalle', $detBody);
         }
         // Slides
         foreach (($input['slides'] ?? []) as $i => $slide) {
@@ -182,16 +188,18 @@ switch ($action) {
             sb_post('historial_estado', ['contenido_id' => $id, 'estado_anterior' => $cur['estado'], 'estado_nuevo' => $input['estado'], 'usuario_id' => $user['id']]);
         }
         // Detail
-        $detFields = ['titulo_post','copy_facebook','copy_instagram','copy_tiktok'];
+        $detFields = ['titulo_post','copy_facebook','copy_instagram','copy_tiktok','copy_linkedin','cta'];
         $detBody   = [];
-        foreach ($detFields as $f) { if (array_key_exists($f, $input)) $detBody[$f] = $input[$f]; }
-        if ($detBody) {
-            $detExists = sb_get('contenido_detalle', 'contenido_id=eq.' . $id . '&limit=1');
-            if (!empty($detExists['data'])) {
-                sb_patch('contenido_detalle', 'contenido_id=eq.' . $id, $detBody);
-            } else {
-                sb_post('contenido_detalle', array_merge(['contenido_id' => $id], $detBody));
+        foreach ($detFields as $f) { 
+            if (array_key_exists($f, $input)) {
+                $detBody[] = ['contenido_id' => $id, 'campo' => $f, 'valor' => $input[$f]];
             }
+        }
+        if (!empty($detBody)) {
+            // Delete old details for these fields (or just delete all for this content)
+            sb_delete('contenido_detalle', 'contenido_id=eq.' . $id);
+            // Insert new key-value rows
+            sb_post('contenido_detalle', $detBody);
         }
         // Slides
         if (isset($input['slides'])) {
@@ -274,10 +282,13 @@ switch ($action) {
         $newRes = sb_post('contenidos', $orig);
         $newId  = $newRes['data'][0]['id'] ?? null;
 
-        $detRes = sb_get('contenido_detalle', 'contenido_id=eq.' . $id . '&limit=1');
-        if (!empty($detRes['data'])) {
-            $d = $detRes['data'][0]; unset($d['id'], $d['contenido_id']);
-            sb_post('contenido_detalle', array_merge(['contenido_id' => $newId], $d));
+        $detRes = sb_get('contenido_detalle', 'contenido_id=eq.' . $id);
+        $detBody = [];
+        foreach (($detRes['data'] ?? []) as $d) {
+            $detBody[] = ['contenido_id' => $newId, 'campo' => $d['campo'], 'valor' => $d['valor']];
+        }
+        if (!empty($detBody)) {
+            sb_post('contenido_detalle', $detBody);
         }
         jsonResponse(['success' => true, 'id' => $newId]);
 
