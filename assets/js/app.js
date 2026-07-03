@@ -998,7 +998,7 @@ function renderContentForm(data) {
 
     html += `</div></div>`; // Close editor-grid & editor-section
 
-    // â”€â”€ 2x1 HORIZONTAL BOX (Referencia Visual + Links) â”€â”€
+    // ── 2x1 HORIZONTAL BOX (Referencia Visual + Links) ──
     html += `<div style="display:flex; gap:20px; align-items:stretch; margin-bottom:16px;">`;
 
     // LEFT HALF: Image Panel
@@ -1031,7 +1031,7 @@ function renderContentForm(data) {
                 <svg class="svg-icon" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:var(--text-muted);" viewBox="0 0 24 24"><path d="M4.585 18l2.97-5.143H22.51l-2.97 5.143H4.585zM2.8 14.857L10.371 1.714h5.943l-7.57 13.143H2.8zM12.115 1.714L21.43 18H15.486L6.17 1.714h5.943z"></path></svg>
                 <input type="url" id="form_enlace_contenido" class="form-control" style="padding-left:32px; font-size:0.8rem;" value="${escHtml(data.enlace_contenido || '')}" placeholder="https://drive.google.com/...">
             </div>
-            <a href="${escHtml(data.enlace_contenido || '#')}" target="_blank" class="btn btn-secondary" style="display:flex; align-items:center; gap:6px; padding:6px 12px; white-space:nowrap; text-decoration:none;" ${!data.enlace_contenido ? 'onclick="event.preventDefault(); alert(\\'Primero guarda un enlace para abrirlo\\')"' : ''}>
+            <a href="${escHtml(data.enlace_contenido || '#')}" target="_blank" class="btn btn-secondary" style="display:flex; align-items:center; gap:6px; padding:6px 12px; white-space:nowrap; text-decoration:none;" ${!data.enlace_contenido ? 'onclick="event.preventDefault(); showNoLinkAlert()"' : ''}>
                 <svg class="svg-icon" viewBox="0 0 24 24" style="width:14px;height:14px;color:#34a853;"><path d="M4.585 18l2.97-5.143H22.51l-2.97 5.143H4.585zM2.8 14.857L10.371 1.714h5.943l-7.57 13.143H2.8zM12.115 1.714L21.43 18H15.486L6.17 1.714h5.943z"></path></svg>
                 Google Drive Madre
             </a>
@@ -2693,6 +2693,11 @@ function escHtml(str) {
     div.textContent = str;
     return div.innerHTML;
 }
+
+function showNoLinkAlert() {
+    alert('Primero guarda un enlace para abrirlo');
+}
+
 
 function hexToRgba(hex, alpha) {
     if (!hex || hex[0] !== '#') return `rgba(229, 57, 53, ${alpha})`;
