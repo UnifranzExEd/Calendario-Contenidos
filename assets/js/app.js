@@ -678,15 +678,17 @@ function renderCalendar() {
             const isAssignedToMe = APP_USER.rol === 'postproductor' && c.postproductor_id == APP_USER.id;
             const isUnassigned = !c.postproductor_id || c.postproductor_id == 0;
             const isCommunityDesigned = c.disenador_id && c.disenador_id != 0;
+            const isProduced = c.estado === 'Producido y Cargado';
             const glowClass = isAssignedToMe ? ' assigned-glow' : '';
             const unassignedClass = isUnassigned ? ' unassigned-alert' : '';
             const communityGlowClass = isCommunityDesigned ? ' designed-glow' : '';
+            const producedGlowClass = isProduced ? ' produced-glow' : '';
 
             let assignedDetails = `<div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px; font-weight:600;">${escHtml(ppNameDisplay)}</div>`;
             
             const isAprobado = !isGhostForPP && c.estado === 'Aprobado';
 
-            html += `<div class="calendar-event${ghostClass}${glowClass}${unassignedClass}${communityGlowClass}" 
+            html += `<div class="calendar-event${ghostClass}${glowClass}${unassignedClass}${communityGlowClass}${producedGlowClass}" 
                           style="border-left: 3px solid ${color}; position:relative;"
                           ${onClickAttr} 
                           oncontextmenu="showContextMenu(event, ${c.id})"
@@ -1035,9 +1037,14 @@ function renderContentForm(data) {
     // Diseño Terminado
     html += `<div>
         <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">Link del Diseño Terminado</label>
-        <div style="position:relative;">
-            <svg class="svg-icon" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:var(--text-muted);" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-            <input type="url" id="form_enlace_diseno" class="form-control" style="padding-left:32px; font-size:0.8rem;" value="${escHtml(data.enlace_diseno || '')}" placeholder="https://drive.google.com/...">
+        <div style="display:flex; gap:8px;">
+            <div style="position:relative; flex:1;">
+                <svg class="svg-icon" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:var(--text-muted);" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                <input type="url" id="form_enlace_diseno" class="form-control" style="padding-left:32px; font-size:0.8rem;" value="${escHtml(data.enlace_diseno || '')}" placeholder="https://drive.google.com/..." oninput="document.getElementById('btn_open_enlace_diseno').href = this.value || '#'; document.getElementById('btn_open_enlace_diseno').onclick = this.value ? null : function(e){e.preventDefault();showNoLinkAlert();}">
+            </div>
+            <a href="${escHtml(data.enlace_diseno || '#')}" target="_blank" id="btn_open_enlace_diseno" class="btn btn-secondary" style="display:flex; align-items:center; justify-content:center; padding:6px; text-decoration:none;" title="Abrir Link" ${!data.enlace_diseno ? 'onclick="event.preventDefault(); showNoLinkAlert()"' : ''}>
+                <svg class="svg-icon" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            </a>
         </div>
     </div>`;
 
