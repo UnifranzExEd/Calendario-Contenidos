@@ -9,7 +9,7 @@ switch ($action) {
 
     case 'all':
         // Two queries, manual join (more reliable than PostgREST embedding)
-        $pestanas = sb_get('pestanas', 'activo=eq.1&select=id,slug,nombre,color&order=orden.asc');
+        $pestanas = sb_get('pestanas', 'activo=eq.1&select=id,slug,nombre,color,enlace_carpeta_base&order=orden.asc');
         $slugMap  = [];
         foreach (($pestanas['data'] ?? []) as $p) {
             if (isset($p['id'])) $slugMap[$p['id']] = $p['slug'] ?? 'default';
