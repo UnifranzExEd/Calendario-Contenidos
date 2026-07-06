@@ -856,7 +856,7 @@ function renderContentForm(data) {
     const camposTab = [...STANDARD_CAMPOS, ...dbCampos];
 
     let html = `<div class="editor-section">
-        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px;">`;
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 8px 10px; margin-bottom: 12px;">`;
     const shortFields = [];
     const linkFields  = [];
     const textFields  = [];
@@ -940,7 +940,7 @@ function renderContentForm(data) {
             const gridCol = isSmall ? 'span 1' : '1 / -1';
             return `<div class="form-group" style="grid-column: ${gridCol};">
                 <label>${escHtml(campo.nombre_display)}</label>
-                <textarea class="form-control" id="form_${campo.nombre_campo}" rows="2" spellcheck="true" lang="es" ${disabled}>${escHtml(val)}</textarea>
+                <textarea class="form-control" id="form_${campo.nombre_campo}" rows="1" style="min-height:28px;resize:none;overflow:hidden;" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" spellcheck="true" lang="es" ${disabled}>${escHtml(val)}</textarea>
             </div>`;
         } else {
             return `<div class="form-group">
@@ -989,13 +989,13 @@ function renderContentForm(data) {
     // Text fields (observaciones, etc.) spanning full width
     textFields.forEach(c => html += renderField(c));
 
-    // CTA Personalizado (takes the 3rd column in the grid)
+    // CTA Personalizado
     html += `<div class="form-group" style="grid-column: span 1;">
         <label style="display:flex; align-items:center; justify-content:space-between;">
             <span>CTA PERSONALIZADO</span>
             ${data.detalle?.cta ? `<button class="btn btn-sm btn-secondary btn-copy-text" onclick="copyText('form_cta')" style="padding:0 4px;font-size:0.6rem;"><svg class="svg-icon" viewBox="0 0 24 24" style="width:10px;height:10px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copiar</button>` : ''}
         </label>
-        <textarea class="form-control" id="form_cta" rows="2" spellcheck="true" lang="es" placeholder="Llamado a la acción (CTA)...">${escHtml(data.detalle?.cta || '')}</textarea>
+        <textarea class="form-control" id="form_cta" rows="1" style="min-height:28px;resize:none;overflow:hidden;" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" spellcheck="true" lang="es" placeholder="CTA...">${escHtml(data.detalle?.cta || '')}</textarea>
     </div>`;
 
     html += `</div></div>`; // Close editor-grid & editor-section
@@ -1251,9 +1251,9 @@ function renderContentForm(data) {
     setTimeout(updateTotalDuration, 50);
     // Enable spellcheck & char counters
     setTimeout(initSpellcheckAndCounters, 60);
-    // Auto-adjust height of pre-filled notas textareas
+    // Auto-adjust height of pre-filled auto-resize textareas
     setTimeout(() => {
-        document.querySelectorAll('.notas-pp-ta').forEach(ta => {
+        document.querySelectorAll('#modalBody textarea[style*="overflow:hidden"]').forEach(ta => {
             ta.style.height = 'auto';
             ta.style.height = ta.scrollHeight + 'px';
         });

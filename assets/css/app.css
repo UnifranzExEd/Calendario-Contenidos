@@ -162,7 +162,7 @@ a:hover { color: var(--accent-hover); }
 
 /* ── FORM ELEMENTS ── */
 .form-group {
-    margin-bottom: 8px; /* Reduced from 12px */
+    margin-bottom: 4px;
 }
 
 .form-group label {
@@ -1100,7 +1100,7 @@ textarea.form-control {
 
 /* ── EDITOR SECTIONS ── */
 .editor-section {
-    margin-bottom: 16px; /* Reduced from 24px */
+    margin-bottom: 10px;
 }
 
 .editor-section-title {
