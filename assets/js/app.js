@@ -668,7 +668,7 @@ function renderCalendar() {
             }
 
             const p = state.pestanas.find(p2 => p2.slug === c.pestana_slug);
-            const color = isGhostStyle ? '#64748b' : (p ? p.color : '#e53935');
+            let color = isGhostStyle ? '#64748b' : (p ? p.color : '#e53935');
             const socialIcon = getSocialIcon(c.red_social);
             const formatoIcon = getFormatIcon(c.formato);
             const estadoColor = getEstadoColor(c.estado);
@@ -677,6 +677,9 @@ function renderCalendar() {
             const onClickAttr = isGhostForPP ? '' : `onclick="event.stopPropagation(); openEditModal(${c.id})"`;
             const isAssignedToMe = APP_USER.rol === 'postproductor' && c.postproductor_id == APP_USER.id;
             const isProduced = c.estado === 'Producido y Cargado';
+            
+            if (isProduced) color = '#10b981'; // Override base color for texts and borders
+            
             let glowClass = '';
             let unassignedClass = '';
             let communityGlowClass = '';
