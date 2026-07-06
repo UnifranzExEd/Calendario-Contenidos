@@ -835,15 +835,17 @@ function renderContentForm(data) {
     // ── Standard fields always shown ──────────────────────────────────────
     // These are hardcoded to always appear regardless of pestana_campos DB config.
     const STANDARD_CAMPOS = [
-        { nombre_campo: 'tema',       nombre_display: 'TÍTULO',     tipo_campo: 'texto',    ancho: '100%'  },
-        { nombre_campo: 'fecha',      nombre_display: 'FECHA',      tipo_campo: 'fecha',    ancho: '160px' },
-        { nombre_campo: 'buyer',      nombre_display: 'BUYER',      tipo_campo: 'dropdown', dropdown_grupo: 'buyer',      ancho: '160px' },
-        { nombre_campo: 'pilar',      nombre_display: 'PILAR',      tipo_campo: 'dropdown', dropdown_grupo: 'pilar',      ancho: '160px' },
-        { nombre_campo: 'atributo',   nombre_display: 'ATRIBUTO',   tipo_campo: 'dropdown', dropdown_grupo: 'atributo',   ancho: '160px' },
-        { nombre_campo: 'red_social', nombre_display: 'RED SOCIAL', tipo_campo: 'dropdown', dropdown_grupo: 'red_social', ancho: '160px' },
-        { nombre_campo: 'estado',     nombre_display: 'ESTADO',     tipo_campo: 'dropdown', dropdown_grupo: 'estado',     ancho: '160px' },
-        { nombre_campo: 'formato',    nombre_display: 'FORMATO',    tipo_campo: 'dropdown', dropdown_grupo: 'formato',    ancho: '160px' },
-        { nombre_campo: 'horario',    nombre_display: 'HORARIO',    tipo_campo: 'texto',    ancho: '120px' },
+        { nombre_campo: 'tema',          nombre_display: 'TÍTULO',            tipo_campo: 'texto',    ancho: '100%'  },
+        { nombre_campo: 'fecha',         nombre_display: 'FECHA',             tipo_campo: 'fecha',    ancho: '160px' },
+        { nombre_campo: 'buyer',         nombre_display: 'BUYER',             tipo_campo: 'dropdown', dropdown_grupo: 'buyer',      ancho: '160px' },
+        { nombre_campo: 'pilar',         nombre_display: 'TIPO PIEZA',        tipo_campo: 'dropdown', dropdown_grupo: 'pilar',      ancho: '160px' },
+        { nombre_campo: 'atributo',      nombre_display: 'ATRIBUTO',          tipo_campo: 'dropdown', dropdown_grupo: 'atributo',   ancho: '160px' },
+        { nombre_campo: 'red_social',    nombre_display: 'RED SOCIAL',        tipo_campo: 'dropdown', dropdown_grupo: 'red_social', ancho: '160px' },
+        { nombre_campo: 'estado',        nombre_display: 'ESTADO',            tipo_campo: 'dropdown', dropdown_grupo: 'estado',     ancho: '160px' },
+        { nombre_campo: 'formato',       nombre_display: 'SERIE EDITORIAL',   tipo_campo: 'dropdown', dropdown_grupo: 'formato',    ancho: '160px' },
+        { nombre_campo: 'formato_pieza', nombre_display: 'FORMATO',           tipo_campo: 'texto',    ancho: '120px' },
+        { nombre_campo: 'ubicaciones',   nombre_display: 'UBICACIONES',       tipo_campo: 'texto',    ancho: '160px' },
+        { nombre_campo: 'horario',       nombre_display: 'HORARIO',           tipo_campo: 'texto',    ancho: '120px' },
     ];
     const STANDARD_NAMES = new Set(STANDARD_CAMPOS.map(c => c.nombre_campo));
 
@@ -1249,6 +1251,13 @@ function renderContentForm(data) {
     setTimeout(updateTotalDuration, 50);
     // Enable spellcheck & char counters
     setTimeout(initSpellcheckAndCounters, 60);
+    // Auto-adjust height of pre-filled notas textareas
+    setTimeout(() => {
+        document.querySelectorAll('.notas-pp-ta').forEach(ta => {
+            ta.style.height = 'auto';
+            ta.style.height = ta.scrollHeight + 'px';
+        });
+    }, 30);
 }
 
 function updateCopyVisibility(overrideValue) {
@@ -1314,7 +1323,7 @@ function renderSlideItem(index, texto, notas, isVideo = false, isPP = false) {
                <span class="slide-duration" id="dur_${index}" style="font-size:0.78rem; color:var(--text-accent); font-weight:600;">${estimatedSecs}s</span>
                <span style="font-size:0.72rem; color:var(--text-muted);">estimado</span>
            </div>`
-        : `<input type="text" class="form-control" style="margin-top:6px;font-size:0.8rem;" spellcheck="true" lang="es" placeholder="Notas para el PP (opcional)" value="${escHtml(notas)}" ${isPP ? 'readonly' : ''}>`;
+        : `<textarea class="form-control notas-pp-ta" style="margin-top:6px;font-size:0.8rem;resize:none;overflow:hidden;min-height:2.4em;line-height:1.4;" rows="2" spellcheck="true" lang="es" placeholder="Notas para el PP (opcional)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" ${isPP ? 'readonly' : ''}>${escHtml(notas)}</textarea>`;
     
     const onInputAttr = isVideo ? `oninput="recalcSceneDuration(this, ${index})"` : '';
     
@@ -1509,6 +1518,7 @@ async function saveContent() {
         { nombre_campo: 'tema' }, { nombre_campo: 'fecha' }, { nombre_campo: 'buyer' },
         { nombre_campo: 'pilar' }, { nombre_campo: 'atributo' }, { nombre_campo: 'red_social' },
         { nombre_campo: 'estado' }, { nombre_campo: 'formato' }, { nombre_campo: 'horario' },
+        { nombre_campo: 'formato_pieza' }, { nombre_campo: 'ubicaciones' },
         { nombre_campo: 'enlace_publicado' }, { nombre_campo: 'enlace_diseno' }, { nombre_campo: 'enlace_contenido' },
     ];
     const STANDARD_NAMES = new Set(STANDARD_CAMPOS.map(c => c.nombre_campo));
@@ -1541,7 +1551,7 @@ async function saveContent() {
     data.slides = [];
     document.querySelectorAll('#slidesContainer .slide-item').forEach(el => {
         const textarea = el.querySelector('.slide-text');
-        const notasInput = el.querySelector('input[type="text"]');
+        const notasInput = el.querySelector('.notas-pp-ta');
         data.slides.push({
             texto: textarea?.value || '',
             notas: notasInput?.value || ''

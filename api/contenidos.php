@@ -151,7 +151,7 @@ switch ($action) {
         }
         // Slides
         foreach (($input['slides'] ?? []) as $i => $slide) {
-            sb_post('contenido_slides', ['contenido_id' => $cid, 'orden' => $i+1, 'texto' => $slide['texto'] ?? '']);
+            sb_post('contenido_slides', ['contenido_id' => $cid, 'orden' => $i+1, 'texto' => $slide['texto'] ?? '', 'notas' => $slide['notas'] ?? null]);
         }
         // History
         sb_post('historial_estado', ['contenido_id' => $cid, 'estado_nuevo' => $body['estado'], 'usuario_id' => $user['id'], 'comentario' => 'Contenido creado']);
@@ -171,7 +171,8 @@ switch ($action) {
         $fields = ['buyer','pilar','atributo','etapa','aspecto','carrera','tema','idea','red_social',
                    'estado','error_ortografico','error_ortografico_detalle','formato','horario',
                    'enlace_contenido','enlace_publicado','enlace_diseno','observaciones','semana',
-                   'fecha','espectadores','interacciones','postproductor_id','enviar_postproduccion'];
+                   'fecha','espectadores','interacciones','postproductor_id','enviar_postproduccion',
+                   'formato_pieza','ubicaciones'];
         $body = [];
         foreach ($fields as $f) {
             if (array_key_exists($f, $input)) $body[$f] = $input[$f];
@@ -205,7 +206,7 @@ switch ($action) {
         if (isset($input['slides'])) {
             sb_delete('contenido_slides', 'contenido_id=eq.' . $id);
             foreach ($input['slides'] as $i => $slide) {
-                sb_post('contenido_slides', ['contenido_id' => $id, 'orden' => $i+1, 'texto' => $slide['texto'] ?? '']);
+                sb_post('contenido_slides', ['contenido_id' => $id, 'orden' => $i+1, 'texto' => $slide['texto'] ?? '', 'notas' => $slide['notas'] ?? null]);
             }
         }
         jsonResponse(['success' => true]);
