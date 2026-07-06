@@ -676,13 +676,19 @@ function renderCalendar() {
             const ghostClass = isGhostStyle ? ' ghost-content' : '';
             const onClickAttr = isGhostForPP ? '' : `onclick="event.stopPropagation(); openEditModal(${c.id})"`;
             const isAssignedToMe = APP_USER.rol === 'postproductor' && c.postproductor_id == APP_USER.id;
-            const isUnassigned = !c.postproductor_id || c.postproductor_id == 0;
-            const isCommunityDesigned = c.disenador_id && c.disenador_id != 0;
             const isProduced = c.estado === 'Producido y Cargado';
-            const glowClass = isAssignedToMe ? ' assigned-glow' : '';
-            const unassignedClass = isUnassigned ? ' unassigned-alert' : '';
-            const communityGlowClass = isCommunityDesigned ? ' designed-glow' : '';
-            const producedGlowClass = isProduced ? ' produced-glow' : '';
+            let glowClass = '';
+            let unassignedClass = '';
+            let communityGlowClass = '';
+            let producedGlowClass = '';
+            
+            if (isProduced) {
+                producedGlowClass = ' produced-glow';
+            } else {
+                glowClass = isAssignedToMe ? ' assigned-glow' : '';
+                unassignedClass = (!c.postproductor_id || c.postproductor_id == 0) ? ' unassigned-alert' : '';
+                communityGlowClass = (c.disenador_id && c.disenador_id != 0) ? ' designed-glow' : '';
+            }
 
             let assignedDetails = `<div style="font-size:0.6rem; color:var(--text-muted); margin-top:4px; font-weight:600;">${escHtml(ppNameDisplay)}</div>`;
             
