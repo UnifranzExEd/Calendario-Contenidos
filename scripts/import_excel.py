@@ -93,10 +93,10 @@ for i, row in df.iterrows():
 
     extra_data.append({
         "canal": canal,
-        "copy": val(row, 'COPY'),                       # COPY → copy de redes
-        "descripcion": val(row, 'Descripción'),         # Descripción → slide texto (cuerpo)
-        "creative_notes": val(row, 'Creative Notes'),   # Creative Notes → notas para el PP
-        "duracion": val(row, 'Duración', 50),           # Duración → campo extra en detalle
+        "copy": val(row, 'Descripción'),              # Descripción (col J) → copy de redes
+        "slide_texto": val(row, 'COPY'),              # COPY (col I) → slide (texto de la pieza)
+        "creative_notes": val(row, 'Creative Notes'),  # Creative Notes → notas para el PP
+        "duracion": val(row, 'Duración', 50),          # Duración → campo extra en detalle
     })
 
 # Insert contenidos
@@ -119,7 +119,7 @@ for idx, item in enumerate(result):
     ex = extra_data[idx]
     canal = ex['canal'] or ''
 
-    # ── COPY → copy por red social
+    # ── Descripción (col J) → copy por red social
     # Meta = Facebook + Instagram | LinkedIn = LinkedIn | LinkedIn + Meta = todas
     if ex['copy']:
         if 'Meta' in canal:
@@ -127,23 +127,22 @@ for idx, item in enumerate(result):
             detalles.append({"contenido_id": cid, "campo": "copy_instagram", "valor": ex['copy']})
         if 'LinkedIn' in canal:
             detalles.append({"contenido_id": cid, "campo": "copy_linkedin", "valor": ex['copy']})
-        # Guardar también como copy genérico
         detalles.append({"contenido_id": cid, "campo": "copy", "valor": ex['copy']})
 
     # ── Duración → campo extra en contenido_detalle
     if ex['duracion']:
         detalles.append({"contenido_id": cid, "campo": "duracion", "valor": ex['duracion']})
 
-    # ── Slides: Descripción como texto principal del slide
-    #            Creative Notes → notas para el PP
-    descripcion = ex['descripcion']
+    # ── COPY (col I) → slide texto principal de la pieza
+    #    Creative Notes → notas para el PP
+    slide_texto = ex['slide_texto']
     creative_notes = ex['creative_notes']
 
-    if descripcion or creative_notes:
+    if slide_texto or creative_notes:
         slides_rows.append({
             "contenido_id": cid,
             "orden": 1,
-            "texto": descripcion or '',          # Descripción → cuerpo del slide
+            "texto": slide_texto or '',          # COPY (col I) → cuerpo del slide
             "notas": creative_notes or None      # Creative Notes → "Notas para el PP"
         })
 
