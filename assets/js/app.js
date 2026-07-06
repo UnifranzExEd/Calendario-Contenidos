@@ -989,14 +989,7 @@ function renderContentForm(data) {
     // Text fields (observaciones, etc.) spanning full width
     textFields.forEach(c => html += renderField(c));
 
-    // CTA Personalizado
-    html += `<div class="form-group" style="grid-column: span 1;">
-        <label style="display:flex; align-items:center; justify-content:space-between;">
-            <span>CTA PERSONALIZADO</span>
-            ${data.detalle?.cta ? `<button class="btn btn-sm btn-secondary btn-copy-text" onclick="copyText('form_cta')" style="padding:0 4px;font-size:0.6rem;"><svg class="svg-icon" viewBox="0 0 24 24" style="width:10px;height:10px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copiar</button>` : ''}
-        </label>
-        <textarea class="form-control" id="form_cta" rows="1" style="min-height:28px;resize:none;overflow:hidden;" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" spellcheck="true" lang="es" placeholder="CTA...">${escHtml(data.detalle?.cta || '')}</textarea>
-    </div>`;
+
 
     html += `</div></div>`; // Close editor-grid & editor-section
 
