@@ -777,7 +777,7 @@ function renderCalendar() {
             listHtml += `<div class="calendar-list-event${ghostClass}${glowClass}${unassignedClass}${communityGlowClass}" ${onClickAttr} oncontextmenu="showContextMenu(event, ${c.id})">
                 <div class="event-color" style="background:${color}"></div>
                 <div class="event-info">
-                    <div class="event-title">${isGhostForPP ? 'Por enviar a Post' : escHtml(c.tema || 'Sin tema')}</div>
+                    <div class="event-title" style="display:flex;align-items:center;gap:6px;">${isGhostForPP ? 'Por enviar a Post' : escHtml(c.tema || 'Sin tema')} ${isGhostForPP ? '' : getDistribucionBadge(c)}</div>
                     <div class="event-meta">
                         ${isGhostForPP ? '<span>Contenido en progreso...</span>' : `
                         <span>${escHtml(c.red_social || '')}</span>
@@ -3215,3 +3215,478 @@ async function deleteCapturaDashboard(id) {
         showToast('Error: ' + e.message, 'error');
     }
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// XLS IMPORTER — Planner 2.0
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * Parsea el texto de la columna T en array de slides.
+ * Cada bloque "N. Archivo.ext\nTexto..." se convierte en un slide.
+ * El nombre de archivo (título) NO va dentro del slide.
+ */
+function parseXLSXSlides(copyText, creativeNotes) {
+    if (!copyText) return [];
+    
+    const lines = copyText.split('\n');
+    const slides = [];
+    const slideHeaderRegex = /^\s*(\d+)\.\s+[\w\-\s]+\.(pdf|png|jpg|jpeg|gif|mp4|mov|svg)[\s\S]*/i;
+    
+    let currentSlide = null;
+    let currentLines = [];
+    
+    for (const rawLine of lines) {
+        const line = rawLine.trim();
+        // Check if this line is a slide header: "N. Filename.ext" or "N. Filename.ext (N)"
+        const headerMatch = line.match(/^(\d+)\.\s+.+\.(pdf|png|jpg|jpeg|gif|mp4|mov|svg)(\s*\(\d+\))?$/i);
+        
+        if (headerMatch) {
+            // Save previous slide
+            if (currentSlide !== null) {
+                const texto = currentLines.join('\n').trim();
+                if (texto) {
+                    slides.push({ texto, notas: currentSlide === 0 ? (creativeNotes || null) : null });
+                }
+            }
+            currentSlide = parseInt(headerMatch[1]) - 1; // 0-indexed
+            currentLines = [];
+        } else if (currentSlide !== null) {
+            currentLines.push(rawLine);
+        }
+    }
+    
+    // Save last slide
+    if (currentSlide !== null) {
+        const texto = currentLines.join('\n').trim();
+        if (texto) {
+            slides.push({ texto, notas: currentSlide === 0 ? (creativeNotes || null) : null });
+        }
+    }
+    
+    return slides;
+}
+
+/**
+ * Converts Excel date serial number to YYYY-MM-DD string.
+ * SheetJS returns date serials as JS Date objects when cellDates:true,
+ * but fallback here handles raw serial numbers too.
+ */
+function xlsDateToYMD(val) {
+    if (!val) return null;
+    if (val instanceof Date || (typeof val === 'object' && val.getTime)) {
+        const d = val;
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+    if (typeof val === 'number') {
+        // Excel date serial (days since 1900-01-01, with leap-year bug at 1900-02-29)
+        const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+        return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+    }
+    if (typeof val === 'string') {
+        // Try ISO or Spanish format
+        const m = val.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+        if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+        const m2 = val.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+        if (m2) return `${m2[3]}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;
+    }
+    return null;
+}
+
+function strVal(v) {
+    if (v === null || v === undefined) return null;
+    const s = String(v).trim();
+    return (s === '' || s === '—' || s.toLowerCase() === 'nan' || s === 'None') ? null : s;
+}
+
+/**
+ * Parses Planner 2.0 Excel workbook (SheetJS workbook object) into row array.
+ */
+function parsePlannerWorkbook(wb) {
+    const ws = wb.Sheets['Planner'];
+    if (!ws) throw new Error('No se encontró la hoja "Planner" en el archivo');
+    
+    const rows = XLSX.utils.sheet_to_json(ws, { raw: false, defval: null, dateNF: 'YYYY-MM-DD' });
+    
+    const parsed = [];
+    for (const row of rows) {
+        const fecha = xlsDateToYMD(row['Fecha']);
+        if (!fecha) continue;
+        
+        const codigo   = strVal(row['Código_Pieza']);
+        if (!codigo) continue;
+        
+        const copyRaw      = strVal(row['COPY']);
+        const creativeNotes= strVal(row['Creative Notes']);
+        const esOrganico   = String(row['Orgánico'] || '').trim().toLowerCase() === 'sí' 
+                          || String(row['Orgánico'] || '').trim().toLowerCase() === 'si';
+        const esPauta      = String(row['Pauta'] || '').trim().toLowerCase() === 'sí'
+                          || String(row['Pauta'] || '').trim().toLowerCase() === 'si';
+        
+        const slides = parseXLSXSlides(copyRaw, creativeNotes);
+        
+        parsed.push({
+            fecha,
+            codigo,
+            semana:          strVal(row['Semana']),
+            serie_editorial: strVal(row['Serie Editorial']),
+            conversacion:    strVal(row['Conversación']),
+            insight:         strVal(row['Insight']),
+            red:             strVal(row['Red']),
+            tipo_pieza:      strVal(row['Tipo Pieza']),
+            headline:        strVal(row['Headline']),
+            cta:             strVal(row['CTA']),
+            url_destino:     strVal(row['URL Destino']),
+            creative_notes:  creativeNotes,
+            copy_completo:   copyRaw,
+            es_organico:     esOrganico,
+            es_pauta:        esPauta,
+            slides
+        });
+    }
+    return parsed;
+}
+
+/**
+ * Opens the XLS Import modal.
+ */
+function openXLSImporter() {
+    // Remove existing modal if any
+    const existing = document.getElementById('xlsImporterModal');
+    if (existing) existing.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'xlsImporterModal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal" style="max-width:680px; width:95vw;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1e293b,#0f172a); border-bottom: 1px solid #22c55e33; padding: 20px 24px;">
+                <div style="display:flex;align-items:center;gap:14px;">
+                    <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#16a34a,#22c55e);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:#fff;stroke-width:2;fill:none;">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 style="margin:0;font-size:1.1rem;color:#f8fafc;">Importar Planner 2.0</h2>
+                        <p style="margin:0;font-size:0.75rem;color:#94a3b8;">Importa el Excel sin duplicar contenidos</p>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="document.getElementById('xlsImporterModal').remove()">×</button>
+            </div>
+            <div class="modal-body" style="padding:24px;">
+                <!-- Drop zone -->
+                <div id="xlsDropZone" 
+                     style="border:2px dashed #334155;border-radius:12px;padding:40px 24px;text-align:center;cursor:pointer;transition:all 0.2s;background:#0f172a;"
+                     onclick="document.getElementById('xlsFileInput').click()"
+                     ondragover="event.preventDefault();this.style.borderColor='#22c55e';this.style.background='#16a34a11';"
+                     ondragleave="this.style.borderColor='#334155';this.style.background='#0f172a';"
+                     ondrop="handleXLSDrop(event)">
+                    <svg viewBox="0 0 24 24" style="width:48px;height:48px;stroke:#22c55e;stroke-width:1.5;fill:none;margin:0 auto 12px;display:block;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <div style="color:#f8fafc;font-size:0.95rem;font-weight:600;margin-bottom:6px;">Arrastra el Planner 2.0.xlsx aquí</div>
+                    <div style="color:#64748b;font-size:0.8rem;">o haz clic para seleccionar el archivo</div>
+                    <div style="margin-top:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+                        <span style="background:#16a34a22;color:#22c55e;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:600;">Col A: Fecha</span>
+                        <span style="background:#16a34a22;color:#22c55e;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:600;">Col T: COPY → Slides</span>
+                        <span style="background:#3b82f622;color:#60a5fa;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:600;">Col P: Orgánico</span>
+                        <span style="background:#f5950022;color:#f59e0b;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:600;">Col Q: Pauta</span>
+                    </div>
+                </div>
+                <input type="file" id="xlsFileInput" accept=".xlsx,.xls" style="display:none;" onchange="handleXLSFileSelect(event)">
+                
+                <!-- Preview section (hidden until file loaded) -->
+                <div id="xlsPreview" style="display:none; margin-top:20px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                        <h3 style="margin:0;font-size:0.9rem;color:#f8fafc;">Vista Previa</h3>
+                        <div id="xlsPreviewBadges" style="display:flex;gap:8px;"></div>
+                    </div>
+                    <div id="xlsPreviewTable" style="max-height:220px;overflow-y:auto;border:1px solid #1e293b;border-radius:8px;font-size:0.75rem;"></div>
+                    <div style="margin-top:12px;padding:12px;background:#0f172a;border-radius:8px;border:1px solid #1e293b;">
+                        <div style="color:#94a3b8;font-size:0.72rem;margin-bottom:6px;">Lógica de importación:</div>
+                        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                            <span style="color:#22c55e;font-size:0.75rem;">✦ Nuevos → se crean</span>
+                            <span style="color:#60a5fa;font-size:0.75rem;">⟳ Cambiaron → se actualizan</span>
+                            <span style="color:#64748b;font-size:0.75rem;">= Idénticos → sin cambios</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Progress -->
+                <div id="xlsProgress" style="display:none;margin-top:20px;">
+                    <div style="color:#94a3b8;font-size:0.8rem;margin-bottom:8px;" id="xlsProgressText">Procesando...</div>
+                    <div style="background:#1e293b;border-radius:8px;height:8px;overflow:hidden;">
+                        <div id="xlsProgressBar" style="background:linear-gradient(90deg,#16a34a,#22c55e);height:100%;width:0%;transition:width 0.3s;border-radius:8px;"></div>
+                    </div>
+                </div>
+                
+                <!-- Results -->
+                <div id="xlsResults" style="display:none;margin-top:20px;"></div>
+            </div>
+            <div class="modal-footer" id="xlsImporterFooter">
+                <button class="btn btn-secondary" onclick="document.getElementById('xlsImporterModal').remove()">Cancelar</button>
+                <button class="btn btn-primary" id="xlsImportBtn" onclick="startXLSImport()" disabled
+                        style="background:linear-gradient(135deg,#16a34a,#22c55e);border:none;opacity:0.5;cursor:not-allowed;">
+                    <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;stroke-width:2;fill:none;display:inline;vertical-align:middle;margin-right:6px;">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    Importar
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    setTimeout(() => modal.classList.add('open'), 10);
+}
+
+let _xlsParsedRows = [];
+
+function handleXLSDrop(event) {
+    event.preventDefault();
+    const dz = document.getElementById('xlsDropZone');
+    if (dz) { dz.style.borderColor='#334155'; dz.style.background='#0f172a'; }
+    const file = event.dataTransfer.files?.[0];
+    if (file) loadXLSFile(file);
+}
+
+function handleXLSFileSelect(event) {
+    const file = event.target.files?.[0];
+    if (file) loadXLSFile(file);
+}
+
+async function loadXLSFile(file) {
+    if (!file.name.match(/\.xlsx?$/i)) {
+        showToast('Por favor selecciona un archivo .xlsx o .xls', 'error');
+        return;
+    }
+    
+    const dz = document.getElementById('xlsDropZone');
+    if (dz) dz.innerHTML = `
+        <div style="color:#22c55e;font-size:0.9rem;font-weight:600;">
+            <svg viewBox="0 0 24 24" style="width:32px;height:32px;stroke:#22c55e;stroke-width:2;fill:none;display:block;margin:0 auto 8px;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            ${escHtml(file.name)}
+        </div>
+        <div style="color:#64748b;font-size:0.75rem;margin-top:4px;">Analizando…</div>
+    `;
+    
+    try {
+        // Load SheetJS if not already loaded
+        if (typeof XLSX === 'undefined') {
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+        }
+        
+        const ab = await file.arrayBuffer();
+        const wb = XLSX.read(ab, { type: 'array', cellDates: true });
+        
+        _xlsParsedRows = parsePlannerWorkbook(wb);
+        showXLSPreview(_xlsParsedRows);
+        
+    } catch(err) {
+        showToast('Error al leer el archivo: ' + err.message, 'error');
+        if (dz) dz.innerHTML = `<div style="color:#ef4444;">Error: ${escHtml(err.message)}</div>`;
+    }
+}
+
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) return resolve();
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+    });
+}
+
+function showXLSPreview(rows) {
+    const preview = document.getElementById('xlsPreview');
+    const table   = document.getElementById('xlsPreviewTable');
+    const badges  = document.getElementById('xlsPreviewBadges');
+    const btn     = document.getElementById('xlsImportBtn');
+    const dz      = document.getElementById('xlsDropZone');
+    
+    const organicCount = rows.filter(r => r.es_organico && !r.es_pauta).length;
+    const pautaCount   = rows.filter(r => r.es_pauta && !r.es_organico).length;
+    const dualCount    = rows.filter(r => r.es_pauta && r.es_organico).length;
+    
+    if (dz) dz.innerHTML = `
+        <svg viewBox="0 0 24 24" style="width:32px;height:32px;stroke:#22c55e;stroke-width:2;fill:none;display:block;margin:0 auto 8px;">
+            <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <div style="color:#22c55e;font-weight:600;">${rows.length} filas detectadas</div>
+        <div style="color:#64748b;font-size:0.75rem;margin-top:4px;">Haz clic para cambiar el archivo</div>
+    `;
+    dz.onclick = () => document.getElementById('xlsFileInput').click();
+    
+    if (badges) badges.innerHTML = `
+        <span style="background:#22c55e22;color:#22c55e;padding:2px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">${organicCount} Orgánico</span>
+        <span style="background:#f5950022;color:#f59e0b;padding:2px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">${pautaCount} Pauta</span>
+        <span style="background:#6366f122;color:#a78bfa;padding:2px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">${dualCount} Dual</span>
+    `;
+    
+    if (table) {
+        const previewRows = rows.slice(0, 8);
+        table.innerHTML = `
+            <table style="width:100%;border-collapse:collapse;">
+                <thead><tr style="background:#1e293b;position:sticky;top:0;">
+                    <th style="padding:8px 10px;text-align:left;color:#94a3b8;font-weight:600;">Fecha</th>
+                    <th style="padding:8px 10px;text-align:left;color:#94a3b8;font-weight:600;">Código</th>
+                    <th style="padding:8px 10px;text-align:left;color:#94a3b8;font-weight:600;">Red</th>
+                    <th style="padding:8px 10px;text-align:left;color:#94a3b8;font-weight:600;">Slides</th>
+                    <th style="padding:8px 10px;text-align:left;color:#94a3b8;font-weight:600;">Tipo</th>
+                </tr></thead>
+                <tbody>
+                    ${previewRows.map(r => `
+                        <tr style="border-bottom:1px solid #1e293b;">
+                            <td style="padding:7px 10px;color:#f1f5f9;">${escHtml(r.fecha)}</td>
+                            <td style="padding:7px 10px;color:#94a3b8;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(r.codigo)}</td>
+                            <td style="padding:7px 10px;color:#94a3b8;">${escHtml(r.red||'—')}</td>
+                            <td style="padding:7px 10px;text-align:center;">
+                                <span style="background:#6366f122;color:#a78bfa;padding:1px 8px;border-radius:10px;font-size:0.7rem;">${r.slides.length}</span>
+                            </td>
+                            <td style="padding:7px 10px;">
+                                ${r.es_pauta && r.es_organico 
+                                    ? '<span style="color:#a78bfa;font-size:0.7rem;font-weight:700;">DUAL</span>'
+                                    : r.es_pauta
+                                        ? '<span style="color:#f59e0b;font-size:0.7rem;font-weight:700;">PAUTA</span>'
+                                        : '<span style="color:#22c55e;font-size:0.7rem;font-weight:700;">ORG.</span>'
+                                }
+                            </td>
+                        </tr>
+                    `).join('')}
+                    ${rows.length > 8 ? `<tr><td colspan="5" style="padding:8px 10px;text-align:center;color:#64748b;font-size:0.72rem;">… y ${rows.length - 8} filas más</td></tr>` : ''}
+                </tbody>
+            </table>
+        `;
+    }
+    
+    if (preview) preview.style.display = '';
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+}
+
+async function startXLSImport() {
+    if (!_xlsParsedRows.length) return;
+    
+    const btn      = document.getElementById('xlsImportBtn');
+    const progress = document.getElementById('xlsProgress');
+    const progressBar  = document.getElementById('xlsProgressBar');
+    const progressText = document.getElementById('xlsProgressText');
+    const results  = document.getElementById('xlsResults');
+    const footer   = document.getElementById('xlsImporterFooter');
+    
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    if (progress) progress.style.display = '';
+    if (results) results.style.display = 'none';
+    
+    const BATCH = 20; // process 20 rows per API call
+    let created   = 0;
+    let updated   = 0;
+    let unchanged = 0;
+    const errors  = [];
+    
+    const totalBatches = Math.ceil(_xlsParsedRows.length / BATCH);
+    
+    for (let b = 0; b < totalBatches; b++) {
+        const batch = _xlsParsedRows.slice(b * BATCH, (b + 1) * BATCH);
+        const pct   = Math.round(((b + 1) / totalBatches) * 100);
+        
+        if (progressText) progressText.textContent = `Importando lote ${b+1} de ${totalBatches}… (${pct}%)`;
+        if (progressBar)  progressBar.style.width  = pct + '%';
+        
+        try {
+            const res = await apiPost('import_excel.php', { rows: batch });
+            if (res.success) {
+                created   += res.results.created   || 0;
+                updated   += res.results.updated   || 0;
+                unchanged += res.results.unchanged || 0;
+                if (res.results.errors?.length) errors.push(...res.results.errors);
+            }
+        } catch(err) {
+            errors.push(`Lote ${b+1}: ${err.message}`);
+        }
+    }
+    
+    // Show results
+    if (progressBar) progressBar.style.width = '100%';
+    if (progressText) progressText.textContent = '¡Importación completa!';
+    
+    if (results) {
+        results.style.display = '';
+        results.innerHTML = `
+            <div style="border:1px solid #16a34a33;border-radius:12px;padding:20px;background:#0f172a;">
+                <div style="font-size:0.9rem;color:#22c55e;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+                    <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;stroke-width:2.5;fill:none;">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    Importación completada
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;">
+                    <div style="background:#16a34a22;border-radius:10px;padding:14px 8px;">
+                        <div style="font-size:1.8rem;font-weight:800;color:#22c55e;">${created}</div>
+                        <div style="font-size:0.72rem;color:#94a3b8;margin-top:2px;">Nuevos</div>
+                    </div>
+                    <div style="background:#3b82f622;border-radius:10px;padding:14px 8px;">
+                        <div style="font-size:1.8rem;font-weight:800;color:#60a5fa;">${updated}</div>
+                        <div style="font-size:0.72rem;color:#94a3b8;margin-top:2px;">Actualizados</div>
+                    </div>
+                    <div style="background:#1e293b;border-radius:10px;padding:14px 8px;">
+                        <div style="font-size:1.8rem;font-weight:800;color:#64748b;">${unchanged}</div>
+                        <div style="font-size:0.72rem;color:#94a3b8;margin-top:2px;">Sin cambios</div>
+                    </div>
+                </div>
+                ${errors.length ? `
+                    <div style="margin-top:14px;padding:10px;background:#ef444411;border-radius:8px;border-left:3px solid #ef4444;">
+                        <div style="color:#ef4444;font-size:0.75rem;font-weight:600;margin-bottom:6px;">${errors.length} error(es):</div>
+                        <div style="color:#fca5a5;font-size:0.7rem;max-height:80px;overflow-y:auto;">${errors.map(e => escHtml(e)).join('<br>')}</div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    // Update footer with reload button
+    if (footer) footer.innerHTML = `
+        <button class="btn btn-secondary" onclick="document.getElementById('xlsImporterModal').remove()">Cerrar</button>
+        <button class="btn btn-primary" onclick="document.getElementById('xlsImporterModal').remove(); loadData();" style="background:linear-gradient(135deg,#16a34a,#22c55e);border:none;">
+            Recargar calendario
+        </button>
+    `;
+    
+    // Auto-reload if items were imported
+    if (created > 0 || updated > 0) {
+        showToast(`✓ ${created} nuevos, ${updated} actualizados`, 'success');
+    }
+}
+
+/**
+ * Returns a small badge HTML for pauta/orgánico based on pestana slug.
+ * Called from calendar rendering.
+ */
+function getDistribucionBadge(c) {
+    const slug = (c.pestana_slug || '').toLowerCase();
+    // Check if we have tipo_distribucion stored in detalle
+    const tipoDist = c._tipo_distribucion || '';
+    
+    if (tipoDist === 'pauta+organico' || tipoDist === 'dual') {
+        return `<span style="display:inline-flex;align-items:center;gap:2px;background:#6366f122;color:#a78bfa;font-size:0.55rem;font-weight:800;padding:1px 5px;border-radius:4px;letter-spacing:0.04em;">P+O</span>`;
+    }
+    if (slug === 'pagados' || tipoDist === 'pauta') {
+        return `<span style="display:inline-flex;align-items:center;gap:2px;background:#f5950022;color:#f59e0b;font-size:0.55rem;font-weight:800;padding:1px 5px;border-radius:4px;letter-spacing:0.04em;">PAUTA</span>`;
+    }
+    if (slug === 'organicos' || tipoDist === 'organico') {
+        return `<span style="display:inline-flex;align-items:center;gap:2px;background:#22c55e22;color:#22c55e;font-size:0.55rem;font-weight:800;padding:1px 5px;border-radius:4px;letter-spacing:0.04em;">ORG.</span>`;
+    }
+    return '';
+}
+
+// Alias for post-import reload
+function loadData() { loadContents(); }
