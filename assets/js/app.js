@@ -3383,8 +3383,15 @@ function parsePlannerWorkbook(wb) {
         const row = allRows[i];
         if (!row || !row.length) continue;
 
-        const fecha = xlsDateToYMD(row[C.fecha]);
+        let fecha = xlsDateToYMD(row[C.fecha]);
         if (!fecha) continue;
+
+        // Normalize year: if the Excel has a year off by 1-2 from current, fix it to current year
+        const currentYear = new Date().getFullYear();
+        const fechaYear = parseInt(fecha.substring(0, 4));
+        if (fechaYear !== currentYear && Math.abs(fechaYear - currentYear) <= 2) {
+            fecha = currentYear + fecha.substring(4);
+        }
 
         const codigo = strVal(C.codigo !== undefined ? row[C.codigo] : null);
         if (!codigo) continue;
