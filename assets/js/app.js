@@ -3603,7 +3603,7 @@ async function startXLSImport() {
         if (progressBar)  progressBar.style.width  = pct + '%';
         
         try {
-            const res = await apiPost('import_excel.php', { rows: batch });
+            const res = await apiPost('contenidos.php?action=import_excel', { rows: batch });
             if (res.success) {
                 created   += res.results.created   || 0;
                 updated   += res.results.updated   || 0;

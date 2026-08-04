@@ -323,6 +323,122 @@ switch ($action) {
         $res    = sb_get('contenidos', 'deleted_at=is.null&estado=in.(Listo,Por publicar,Aprobado)&fecha=lte.' . $today . '&select=id');
         jsonResponse(['success' => true, 'count' => count($res['data'] ?? [])]);
 
+    // ─── IMPORTAR EXCEL (Planner 2.0) ──────────────────────────────────
+    case 'import_excel':
+        if ($method !== 'POST') jsonResponse(['error' => 'POST requerido'], 405);
+
+        $input = getJsonInput();
+        $rows  = $input['rows'] ?? [];
+        if (empty($rows) || !is_array($rows)) jsonResponse(['error' => 'No se recibieron filas'], 400);
+
+        // Obtener IDs de pestañas
+        $orgRes = sb_get('pestanas', 'slug=eq.organicos&select=id&limit=1');
+        $pagRes = sb_get('pestanas', 'slug=eq.pagados&select=id&limit=1');
+        $organicosId = $orgRes['data'][0]['id'] ?? null;
+        $pagadosId   = $pagRes['data'][0]['id'] ?? null;
+        if (!$organicosId || !$pagadosId) jsonResponse(['error' => 'No se encontraron pestañas'], 500);
+
+        // Mapa de contenidos existentes
+        $existRes = sb_get('contenidos', 'deleted_at=is.null&select=id,fecha,tema,pilar,pestana_id');
+        $existMap = [];
+        foreach ($existRes['data'] ?? [] as $e) {
+            if ($e['fecha'] && $e['tema']) $existMap[$e['fecha'].'|'.trim($e['tema'])] = $e;
+        }
+
+        $results = ['created' => 0, 'updated' => 0, 'unchanged' => 0, 'errors' => []];
+
+        foreach ($rows as $idx => $row) {
+            try {
+                $fecha       = $row['fecha']        ?? null;
+                $codigoPieza = $row['codigo']        ?? null;
+                $esOrganico  = !empty($row['es_organico']);
+                $esPauta     = !empty($row['es_pauta']);
+                $slides      = $row['slides']        ?? [];
+
+                if (!$fecha || !$codigoPieza) {
+                    $results['errors'][] = "Fila #{$idx}: sin fecha o código de pieza";
+                    continue;
+                }
+
+                $pestanaId = $esPauta ? $pagadosId : $organicosId;
+                $tipoDist  = 'organico';
+                if ($esPauta && $esOrganico) $tipoDist = 'pauta+organico';
+                elseif ($esPauta)            $tipoDist = 'pauta';
+
+                $body = [
+                    'pestana_id'       => $pestanaId,
+                    'fecha'            => $fecha,
+                    'mes'              => mesFromFecha($fecha),
+                    'anio'             => intval(date('Y', strtotime($fecha))),
+                    'semana'           => $row['semana']          ?? null,
+                    'formato'          => $row['serie_editorial'] ?? null,
+                    'tema'             => $codigoPieza,
+                    'idea'             => $row['conversacion']    ?? null,
+                    'pilar'            => $row['tipo_pieza']      ?? null,
+                    'red_social'       => $row['red']             ?? null,
+                    'horario'          => $row['headline']        ?? null,
+                    'observaciones'    => $row['insight']         ?? null,
+                    'enlace_contenido' => $row['url_destino']     ?? null,
+                    'estado'           => 'En elaboración',
+                    'creado_por'       => $user['id'],
+                ];
+
+                $key = $fecha . '|' . trim($codigoPieza);
+
+                if (isset($existMap[$key])) {
+                    $existente = $existMap[$key];
+                    $existId   = $existente['id'];
+                    $hasChanges = false;
+                    if (($existente['fecha']      ?? '') !== $fecha)                  $hasChanges = true;
+                    if (($existente['pilar']      ?? '') !== ($row['tipo_pieza'] ?? '')) $hasChanges = true;
+                    if (($existente['pestana_id'] ?? 0)  !== $pestanaId)             $hasChanges = true;
+                    $existSlides = sb_get('contenido_slides', 'contenido_id=eq.'.$existId.'&order=orden.asc');
+                    if (!empty($slides) && ($existSlides['data'][0]['texto'] ?? '') !== ($slides[0]['texto'] ?? '')) $hasChanges = true;
+
+                    if ($hasChanges) {
+                        $upd = $body; unset($upd['creado_por']); $upd['actualizado_por'] = $user['id'];
+                        sb_patch('contenidos', 'id=eq.'.$existId, $upd);
+                        if (!empty($slides)) {
+                            sb_delete('contenido_slides', 'contenido_id=eq.'.$existId);
+                            foreach ($slides as $si => $slide) {
+                                sb_post('contenido_slides', ['contenido_id'=>$existId,'orden'=>$si+1,'texto'=>$slide['texto']??'','notas'=>$slide['notas']??null]);
+                            }
+                        }
+                        sb_delete('contenido_detalle', 'contenido_id=eq.'.$existId);
+                        foreach (buildDetalleXLS($existId, $row, $tipoDist) as $d) sb_post('contenido_detalle', $d);
+                        $results['updated']++;
+                    } else {
+                        $results['unchanged']++;
+                    }
+                } else {
+                    $cRes = sb_post('contenidos', $body);
+                    $cid  = $cRes['data'][0]['id'] ?? null;
+                    if (!$cid) { $results['errors'][] = "Fila #{$idx}: error al insertar"; continue; }
+                    foreach ($slides as $si => $slide) {
+                        sb_post('contenido_slides', ['contenido_id'=>$cid,'orden'=>$si+1,'texto'=>$slide['texto']??'','notas'=>$slide['notas']??null]);
+                    }
+                    foreach (buildDetalleXLS($cid, $row, $tipoDist) as $d) sb_post('contenido_detalle', $d);
+                    sb_post('historial_estado', ['contenido_id'=>$cid,'estado_nuevo'=>'En elaboración','usuario_id'=>$user['id'],'comentario'=>'Importado desde Planner 2.0 XLS']);
+                    $results['created']++;
+                }
+            } catch (Exception $ex) {
+                $results['errors'][] = "Fila #{$idx}: " . $ex->getMessage();
+            }
+        }
+        jsonResponse(['success' => true, 'results' => $results]);
+
     default:
         jsonResponse(['error' => 'Acción no válida'], 400);
+}
+
+function buildDetalleXLS($cid, $row, $tipoDist) {
+    $d = [];
+    if (!empty($row['headline']))       $d[] = ['contenido_id'=>$cid,'campo'=>'titulo_post',    'valor'=>$row['headline']];
+    if (!empty($row['cta']))            $d[] = ['contenido_id'=>$cid,'campo'=>'cta',             'valor'=>$row['cta']];
+    if (!empty($row['copy_completo'])) {
+        $d[] = ['contenido_id'=>$cid,'campo'=>'copy_facebook',  'valor'=>$row['copy_completo']];
+        $d[] = ['contenido_id'=>$cid,'campo'=>'copy_instagram', 'valor'=>$row['copy_completo']];
+    }
+    if ($tipoDist) $d[] = ['contenido_id'=>$cid,'campo'=>'tipo_distribucion','valor'=>$tipoDist];
+    return $d;
 }
