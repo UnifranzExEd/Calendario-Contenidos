@@ -3322,49 +3322,90 @@ function strVal(v) {
     return (s === '' || s === '—' || s.toLowerCase() === 'nan' || s === 'None') ? null : s;
 }
 
-/**
- * Parses Planner 2.0 Excel workbook (SheetJS workbook object) into row array.
- */
 function parsePlannerWorkbook(wb) {
-    const ws = wb.Sheets['Planner'];
-    if (!ws) throw new Error('No se encontró la hoja "Planner" en el archivo');
-    
-    const rows = XLSX.utils.sheet_to_json(ws, { raw: false, defval: null, dateNF: 'YYYY-MM-DD' });
-    
+    let ws = wb.Sheets['Planner'];
+    if (!ws) {
+        // Try first sheet as fallback
+        ws = wb.Sheets[wb.SheetNames[0]];
+        if (!ws) throw new Error('No se encontraron hojas en el archivo');
+    }
+
+    // Get all data as array of arrays (raw values, no header-name mapping)
+    const allRows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+    if (allRows.length < 2) throw new Error('El archivo no tiene suficientes filas');
+
+    // Find header row (first row containing "Fecha")
+    let headerRowIdx = 0;
+    for (let i = 0; i < Math.min(5, allRows.length); i++) {
+        if (allRows[i] && allRows[i].some(v => String(v||'').trim() === 'Fecha')) {
+            headerRowIdx = i;
+            break;
+        }
+    }
+
+    // Build column index map from header row
+    const headerRow = allRows[headerRowIdx] || [];
+    const colIdx = {};
+    headerRow.forEach((val, idx) => { if (val) colIdx[String(val).trim()] = idx; });
+
+    if (!('Fecha' in colIdx)) throw new Error('No se encontró la columna "Fecha". Headers: ' + headerRow.filter(Boolean).join(', '));
+
+    const C = {
+        fecha:          colIdx['Fecha'],
+        codigo:         colIdx['Código_Pieza'] ?? colIdx['Codigo_Pieza'] ?? colIdx['Código Pieza'],
+        semana:         colIdx['Semana'],
+        serieEditorial: colIdx['Serie Editorial'],
+        conversacion:   colIdx['Conversación'] ?? colIdx['Conversacion'],
+        insight:        colIdx['Insight'],
+        red:            colIdx['Red'],
+        tipoPieza:      colIdx['Tipo Pieza'],
+        organico:       colIdx['Orgánico'] ?? colIdx['Organico'],
+        pauta:          colIdx['Pauta'],
+        headline:       colIdx['Headline'],
+        copy:           colIdx['COPY'],
+        cta:            colIdx['CTA'],
+        creativeNotes:  colIdx['Creative Notes'],
+        urlDestino:     colIdx['URL Destino'],
+    };
+
     const parsed = [];
-    for (const row of rows) {
-        const fecha = xlsDateToYMD(row['Fecha']);
+    for (let i = headerRowIdx + 1; i < allRows.length; i++) {
+        const row = allRows[i];
+        if (!row || !row.length) continue;
+
+        const fecha = xlsDateToYMD(row[C.fecha]);
         if (!fecha) continue;
-        
-        const codigo   = strVal(row['Código_Pieza']);
+
+        const codigo = strVal(C.codigo !== undefined ? row[C.codigo] : null);
         if (!codigo) continue;
-        
-        const copyRaw      = strVal(row['COPY']);
-        const creativeNotes= strVal(row['Creative Notes']);
-        const esOrganico   = String(row['Orgánico'] || '').trim().toLowerCase() === 'sí' 
-                          || String(row['Orgánico'] || '').trim().toLowerCase() === 'si';
-        const esPauta      = String(row['Pauta'] || '').trim().toLowerCase() === 'sí'
-                          || String(row['Pauta'] || '').trim().toLowerCase() === 'si';
-        
+
+        const copyRaw       = strVal(C.copy !== undefined ? row[C.copy] : null);
+        const creativeNotes = strVal(C.creativeNotes !== undefined ? row[C.creativeNotes] : null);
+
+        const orgVal  = String(C.organico !== undefined ? (row[C.organico]||'') : '').trim().toLowerCase();
+        const pauVal  = String(C.pauta !== undefined ? (row[C.pauta]||'') : '').trim().toLowerCase();
+        const esOrganico = orgVal === 'sí' || orgVal === 'si' || orgVal === 'yes' || orgVal === 'x';
+        const esPauta    = pauVal === 'sí' || pauVal === 'si' || pauVal === 'yes' || pauVal === 'x';
+
         const slides = parseXLSXSlides(copyRaw, creativeNotes);
-        
+
         parsed.push({
             fecha,
             codigo,
-            semana:          strVal(row['Semana']),
-            serie_editorial: strVal(row['Serie Editorial']),
-            conversacion:    strVal(row['Conversación']),
-            insight:         strVal(row['Insight']),
-            red:             strVal(row['Red']),
-            tipo_pieza:      strVal(row['Tipo Pieza']),
-            headline:        strVal(row['Headline']),
-            cta:             strVal(row['CTA']),
-            url_destino:     strVal(row['URL Destino']),
-            creative_notes:  creativeNotes,
+            semana:          strVal(C.semana !== undefined ? row[C.semana] : null),
+            serie_editorial: strVal(C.serieEditorial !== undefined ? row[C.serieEditorial] : null),
+            conversacion:    strVal(C.conversacion !== undefined ? row[C.conversacion] : null),
+            insight:         strVal(C.insight !== undefined ? row[C.insight] : null),
+            red:             strVal(C.red !== undefined ? row[C.red] : null),
+            tipo_pieza:      strVal(C.tipoPieza !== undefined ? row[C.tipoPieza] : null),
+            headline:        strVal(C.headline !== undefined ? row[C.headline] : null),
             copy_completo:   copyRaw,
+            cta:             strVal(C.cta !== undefined ? row[C.cta] : null),
+            creative_notes:  creativeNotes,
+            url_destino:     strVal(C.urlDestino !== undefined ? row[C.urlDestino] : null),
             es_organico:     esOrganico,
             es_pauta:        esPauta,
-            slides
+            slides,
         });
     }
     return parsed;
