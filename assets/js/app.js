@@ -3933,14 +3933,19 @@ async function approveXLSImport() {
         if (progressText) progressText.textContent = pct + '%';
 
         try {
+            console.log('[XLS Approve] Sending batch', b+1, 'of', totalBatches, '- rows:', batch.length);
             const res = await apiPost('contenidos.php?action=import_excel', { rows: batch });
-            if (res.success) {
+            console.log('[XLS Approve] Batch result:', JSON.stringify(res));
+            if (res && res.success) {
                 created   += res.results.created   || 0;
                 updated   += res.results.updated   || 0;
                 unchanged += res.results.unchanged || 0;
                 if (res.results.errors?.length) errors.push(...res.results.errors);
+            } else if (res && res.error) {
+                errors.push(`Lote ${b+1}: ${res.error}`);
             }
         } catch(err) {
+            console.error('[XLS Approve] Error:', err);
             errors.push(`Lote ${b+1}: ${err.message}`);
         }
     }
@@ -3955,8 +3960,11 @@ async function approveXLSImport() {
     // Reload real data
     await loadContents();
 
-    // Show result toast
+    // Show result
     const msg = `✓ Importación completada: ${created} nuevos, ${updated} actualizados, ${unchanged} sin cambios`;
+    if (errors.length) {
+        alert('Errores durante importación:\n\n' + errors.join('\n'));
+    }
     showToast(msg, errors.length ? 'warning' : 'success');
 
     if (errors.length) {
