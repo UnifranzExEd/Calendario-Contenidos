@@ -721,6 +721,30 @@ function renderCalendar() {
         if (dayContents.length > 4) {
             html += `<div style="font-size:0.65rem;color:var(--text-muted);text-align:center;padding:2px 0">+${dayContents.length - 4} más</div>`;
         }
+
+        // Render draft items from XLS preview
+        if (typeof _xlsDraftItems !== 'undefined' && _xlsDraftItems.length) {
+            const draftsForDay = _xlsDraftItems.filter(dr => dr.fecha === dateStr);
+            draftsForDay.slice(0, 3).forEach(dr => {
+                const draftColor = dr.es_pauta ? '#f59e0b' : '#22c55e';
+                const draftType = dr.es_pauta && dr.es_organico ? 'P+O' : dr.es_pauta ? 'PAUTA' : 'ORG.';
+                html += `<div class="calendar-event" 
+                              style="border-left:3px dashed ${draftColor}; position:relative; opacity:0.85; background:repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(99,102,241,0.04) 3px, rgba(99,102,241,0.04) 6px);"
+                              title="BORRADOR: ${escHtml(dr.codigo)} | ${escHtml(dr.red||'')} | ${dr.slides.length} slides">
+                        <div style="position:absolute; top:0; right:0; background:linear-gradient(135deg,#f59e0b,#eab308); color:#000; font-size:0.5rem; font-weight:900; padding:2px 6px; border-radius:0 4px 0 6px; letter-spacing:0.08em; z-index:10;">BORRADOR</div>
+                        <div class="cal-ev-top">
+                            <span class="cal-ev-social">${getSocialIcon(dr.red)}</span>
+                            <span style="background:${draftColor}22;color:${draftColor};font-size:0.55rem;font-weight:800;padding:1px 5px;border-radius:4px;">${draftType}</span>
+                        </div>
+                        <div class="cal-ev-title" style="color:#e2e8f0;">${escHtml((dr.codigo||'').substring(0, 28))}</div>
+                        <div style="font-size:0.6rem; color:#a78bfa; margin-top:2px; font-weight:600;">${dr.slides.length} slides</div>
+                     </div>`;
+            });
+            if (draftsForDay.length > 3) {
+                html += `<div style="font-size:0.6rem;color:#a78bfa;text-align:center;padding:2px 0;font-weight:600;">+${draftsForDay.length - 3} borradores más</div>`;
+            }
+        }
+
         html += '</div>';
     }
 
@@ -3430,18 +3454,19 @@ function openXLSImporter() {
             </div>
             <div class="modal-footer" id="xlsImporterFooter">
                 <button class="btn btn-secondary" onclick="document.getElementById('xlsImporterModal').remove()">Cancelar</button>
-                <button class="btn btn-primary" id="xlsImportBtn" onclick="startXLSImport()" disabled
-                        style="background:linear-gradient(135deg,#16a34a,#22c55e);border:none;opacity:0.5;cursor:not-allowed;">
+                <button class="btn btn-primary" id="xlsImportBtn" onclick="previewXLSInCalendar()" disabled
+                        style="background:linear-gradient(135deg,#3b82f6,#6366f1);border:none;opacity:0.5;cursor:not-allowed;">
                     <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;stroke-width:2;fill:none;display:inline;vertical-align:middle;margin-right:6px;">
-                        <polyline points="20 6 9 17 4 12"></polyline>
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
                     </svg>
-                    Importar
+                    Previsualizar en Calendario
                 </button>
             </div>
         </div>
     `;
     document.body.appendChild(modal);
-    setTimeout(() => modal.classList.add('open'), 10);
+    setTimeout(() => modal.classList.add('active'), 10);
 }
 
 let _xlsParsedRows = [];
@@ -3686,6 +3711,189 @@ function getDistribucionBadge(c) {
         return `<span style="display:inline-flex;align-items:center;gap:2px;background:#22c55e22;color:#22c55e;font-size:0.55rem;font-weight:800;padding:1px 5px;border-radius:4px;letter-spacing:0.04em;">ORG.</span>`;
     }
     return '';
+}
+
+// ══════════════════════════════════════════
+// XLS PREVIEW → APPROVE WORKFLOW
+// ══════════════════════════════════════════
+let _xlsDraftItems = [];
+
+function previewXLSInCalendar() {
+    if (!_xlsParsedRows.length) return;
+
+    // Store drafts for calendar rendering
+    _xlsDraftItems = [..._xlsParsedRows];
+
+    // Close modal
+    const modal = document.getElementById('xlsImporterModal');
+    if (modal) modal.remove();
+
+    // Switch to calendar view if not already
+    if (state.currentView !== 'calendar') setView('calendar');
+
+    // Re-render calendar (will now include draft items)
+    renderCalendar();
+
+    // Show floating approval bar
+    showDraftApprovalBar(_xlsDraftItems.length);
+
+    showToast(`${_xlsDraftItems.length} borradores cargados en el calendario. Revisa y aprueba.`, 'info');
+}
+
+function showDraftApprovalBar(count) {
+    // Remove if existing
+    const existing = document.getElementById('xlsDraftBar');
+    if (existing) existing.remove();
+
+    const bar = document.createElement('div');
+    bar.id = 'xlsDraftBar';
+    bar.style.cssText = `
+        position: fixed; bottom: 0; left: 0; right: 0; z-index: 999;
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-top: 2px solid #f59e0b;
+        padding: 14px 28px;
+        display: flex; align-items: center; justify-content: space-between;
+        box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+        animation: slideUpBar 0.35s ease;
+    `;
+    bar.innerHTML = `
+        <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#f59e0b,#eab308);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:#000;stroke-width:2.5;fill:none;">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+            </div>
+            <div>
+                <div style="color:#f8fafc;font-size:0.9rem;font-weight:700;">Modo Previsualización</div>
+                <div style="color:#94a3b8;font-size:0.75rem;">${count} borradores en el calendario · Revisa cómo quedan antes de importar</div>
+            </div>
+        </div>
+        <div style="display:flex;gap:10px;">
+            <button onclick="discardXLSDrafts()" style="
+                background:transparent;border:1px solid #ef4444;color:#ef4444;
+                padding:8px 20px;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;
+                transition:all 0.2s;
+            " onmouseover="this.style.background='#ef444422'" onmouseout="this.style.background='transparent'">
+                <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;stroke-width:2;fill:none;display:inline;vertical-align:middle;margin-right:4px;">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                Descartar
+            </button>
+            <button onclick="approveXLSImport()" style="
+                background:linear-gradient(135deg,#16a34a,#22c55e);border:none;color:#fff;
+                padding:8px 24px;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;
+                transition:all 0.2s; box-shadow: 0 2px 12px rgba(34,197,94,0.3);
+            " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 20px rgba(34,197,94,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 12px rgba(34,197,94,0.3)'">
+                <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;stroke-width:2.5;fill:none;display:inline;vertical-align:middle;margin-right:4px;">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                Aprobar e Importar
+            </button>
+        </div>
+    `;
+
+    // Add animation keyframes
+    if (!document.getElementById('xlsDraftBarStyle')) {
+        const style = document.createElement('style');
+        style.id = 'xlsDraftBarStyle';
+        style.textContent = `@keyframes slideUpBar { from { transform: translateY(100%); } to { transform: translateY(0); } }`;
+        document.head.appendChild(style);
+    }
+
+    document.body.appendChild(bar);
+}
+
+function discardXLSDrafts() {
+    _xlsDraftItems = [];
+    _xlsParsedRows = [];
+
+    // Remove floating bar
+    const bar = document.getElementById('xlsDraftBar');
+    if (bar) bar.remove();
+
+    // Re-render calendar without drafts
+    renderCalendar();
+
+    showToast('Borradores descartados', 'info');
+}
+
+async function approveXLSImport() {
+    if (!_xlsDraftItems.length) return;
+
+    const bar = document.getElementById('xlsDraftBar');
+    if (bar) {
+        bar.innerHTML = `
+            <div style="display:flex;align-items:center;gap:14px;width:100%;">
+                <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#16a34a,#22c55e);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:#fff;stroke-width:2;fill:none;animation:spin 1s linear infinite;">
+                        <path d="M21 12a9 9 0 11-6.219-8.56"></path>
+                    </svg>
+                </div>
+                <div style="flex:1;">
+                    <div style="color:#f8fafc;font-size:0.9rem;font-weight:700;">Importando contenidos…</div>
+                    <div style="background:#1e293b;border-radius:8px;height:6px;overflow:hidden;margin-top:6px;">
+                        <div id="xlsApproveProgressBar" style="background:linear-gradient(90deg,#16a34a,#22c55e);height:100%;width:0%;transition:width 0.3s;border-radius:8px;"></div>
+                    </div>
+                </div>
+                <div id="xlsApproveProgressText" style="color:#94a3b8;font-size:0.8rem;font-weight:600;min-width:50px;text-align:right;">0%</div>
+            </div>
+        `;
+
+        // Add spin animation
+        if (!document.getElementById('xlsSpinStyle')) {
+            const style = document.createElement('style');
+            style.id = 'xlsSpinStyle';
+            style.textContent = `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
+            document.head.appendChild(style);
+        }
+    }
+
+    const BATCH = 20;
+    let created = 0, updated = 0, unchanged = 0;
+    const errors = [];
+    const totalBatches = Math.ceil(_xlsDraftItems.length / BATCH);
+
+    for (let b = 0; b < totalBatches; b++) {
+        const batch = _xlsDraftItems.slice(b * BATCH, (b + 1) * BATCH);
+        const pct = Math.round(((b + 1) / totalBatches) * 100);
+
+        const progressBar = document.getElementById('xlsApproveProgressBar');
+        const progressText = document.getElementById('xlsApproveProgressText');
+        if (progressBar) progressBar.style.width = pct + '%';
+        if (progressText) progressText.textContent = pct + '%';
+
+        try {
+            const res = await apiPost('contenidos.php?action=import_excel', { rows: batch });
+            if (res.success) {
+                created   += res.results.created   || 0;
+                updated   += res.results.updated   || 0;
+                unchanged += res.results.unchanged || 0;
+                if (res.results.errors?.length) errors.push(...res.results.errors);
+            }
+        } catch(err) {
+            errors.push(`Lote ${b+1}: ${err.message}`);
+        }
+    }
+
+    // Clear drafts
+    _xlsDraftItems = [];
+    _xlsParsedRows = [];
+
+    // Remove bar
+    if (bar) bar.remove();
+
+    // Reload real data
+    await loadContents();
+
+    // Show result toast
+    const msg = `✓ Importación completada: ${created} nuevos, ${updated} actualizados, ${unchanged} sin cambios`;
+    showToast(msg, errors.length ? 'warning' : 'success');
+
+    if (errors.length) {
+        console.warn('Import errors:', errors);
+    }
 }
 
 // Alias for post-import reload
