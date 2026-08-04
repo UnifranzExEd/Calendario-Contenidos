@@ -725,23 +725,33 @@ function renderCalendar() {
         // Render draft items from XLS preview
         if (typeof _xlsDraftItems !== 'undefined' && _xlsDraftItems.length) {
             const draftsForDay = _xlsDraftItems.filter(dr => dr.fecha === dateStr);
-            draftsForDay.slice(0, 3).forEach(dr => {
-                const draftColor = dr.es_pauta ? '#f59e0b' : '#22c55e';
+            draftsForDay.slice(0, 4).forEach(dr => {
+                const draftColor = dr.es_pauta && dr.es_organico ? '#a78bfa' : dr.es_pauta ? '#f59e0b' : '#22c55e';
                 const draftType = dr.es_pauta && dr.es_organico ? 'P+O' : dr.es_pauta ? 'PAUTA' : 'ORG.';
+                const titulo = dr.headline || dr.conversacion || dr.codigo || 'Sin título';
+                const socialIcon = getSocialIcon(dr.red);
+                const formatoIcon = getFormatIcon(dr.serie_editorial);
+                const slideCount = dr.slides ? dr.slides.length : 0;
+                const tabName = dr.es_pauta && dr.es_organico ? 'Pauta + Orgánico' : dr.es_pauta ? 'Pagados' : 'Orgánicos';
+
                 html += `<div class="calendar-event" 
-                              style="border-left:3px dashed ${draftColor}; position:relative; opacity:0.85; background:repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(99,102,241,0.04) 3px, rgba(99,102,241,0.04) 6px);"
-                              title="BORRADOR: ${escHtml(dr.codigo)} | ${escHtml(dr.red||'')} | ${dr.slides.length} slides">
-                        <div style="position:absolute; top:0; right:0; background:linear-gradient(135deg,#f59e0b,#eab308); color:#000; font-size:0.5rem; font-weight:900; padding:2px 6px; border-radius:0 4px 0 6px; letter-spacing:0.08em; z-index:10;">BORRADOR</div>
+                              style="border-left:3px dashed ${draftColor}; position:relative; opacity:0.9;"
+                              title="BORRADOR: ${escHtml(dr.codigo)}\nHeadline: ${escHtml(titulo)}\nRed: ${escHtml(dr.red||'—')}\nFormato: ${escHtml(dr.serie_editorial||'—')}\nSlides: ${slideCount}\nTipo: ${draftType}">
+                        <div style="position:absolute; top:0; right:0; background:linear-gradient(135deg,#f59e0b,#eab308); color:#000; font-size:0.48rem; font-weight:900; padding:1px 5px; border-radius:0 4px 0 6px; letter-spacing:0.08em; z-index:10; line-height:1.6;">BORRADOR</div>
                         <div class="cal-ev-top">
-                            <span class="cal-ev-social">${getSocialIcon(dr.red)}</span>
-                            <span style="background:${draftColor}22;color:${draftColor};font-size:0.55rem;font-weight:800;padding:1px 5px;border-radius:4px;">${draftType}</span>
+                            <span class="cal-ev-social">${socialIcon}</span>
+                            <span class="cal-ev-format">${formatoIcon}</span>
+                            <div style="display:flex; align-items:center; gap:3px;">
+                                <span style="background:${draftColor}22;color:${draftColor};font-size:0.5rem;font-weight:800;padding:1px 4px;border-radius:3px;letter-spacing:0.04em;">${draftType}</span>
+                                ${slideCount > 0 ? '<span style="background:#6366f122;color:#a78bfa;font-size:0.5rem;font-weight:700;padding:1px 4px;border-radius:3px;">' + slideCount + 's</span>' : ''}
+                            </div>
                         </div>
-                        <div class="cal-ev-title" style="color:#e2e8f0;">${escHtml((dr.codigo||'').substring(0, 28))}</div>
-                        <div style="font-size:0.6rem; color:#a78bfa; margin-top:2px; font-weight:600;">${dr.slides.length} slides</div>
+                        <div class="cal-ev-title" style="color:#e2e8f0;">${escHtml(titulo.substring(0, 32))}${titulo.length > 32 ? '&#8230;' : ''}</div>
+                        <div class="cal-ev-tab" style="color:${draftColor};">${escHtml(tabName)}</div>
                      </div>`;
             });
-            if (draftsForDay.length > 3) {
-                html += `<div style="font-size:0.6rem;color:#a78bfa;text-align:center;padding:2px 0;font-weight:600;">+${draftsForDay.length - 3} borradores más</div>`;
+            if (draftsForDay.length > 4) {
+                html += `<div style="font-size:0.6rem;color:#a78bfa;text-align:center;padding:2px 0;font-weight:600;">+${draftsForDay.length - 4} borradores más</div>`;
             }
         }
 
@@ -3552,10 +3562,20 @@ async function loadXLSFile(file) {
         const ab = await file.arrayBuffer();
         const wb = XLSX.read(ab, { type: 'array', cellDates: true });
         
+        console.log('[XLS Import] Sheets:', wb.SheetNames);
+        
         _xlsParsedRows = parsePlannerWorkbook(wb);
+        
+        console.log('[XLS Import] Parsed rows:', _xlsParsedRows.length);
+        if (_xlsParsedRows.length > 0) {
+            const r = _xlsParsedRows[0];
+            console.log('[XLS Import] Sample row:', { fecha: r.fecha, codigo: r.codigo, red: r.red, slides: r.slides?.length, headline: r.headline?.substring(0, 50) });
+        }
+        
         showXLSPreview(_xlsParsedRows);
         
     } catch(err) {
+        console.error('[XLS Import] Error:', err);
         showToast('Error al leer el archivo: ' + err.message, 'error');
         if (dz) dz.innerHTML = `<div style="color:#ef4444;">Error: ${escHtml(err.message)}</div>`;
     }
