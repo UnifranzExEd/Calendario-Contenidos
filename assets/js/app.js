@@ -3284,8 +3284,8 @@ function parseXLSXSlides(copyText, creativeNotes) {
     const lines = copyText.split('\n');
 
     // ── Detect format ──────────────────────────────────────────────────
-    // Format 1: has lines matching "N. something.ext"
-    const fmt1Header = /^\s*(\d+)\.\s+.+\.(pdf|png|jpg|jpeg|gif|mp4|mov|svg)(\s*\(\d+\))?$/i;
+    // Format 1: "N. filename.ext" or "N. filename... (N)" (truncated names with ellipsis)
+    const fmt1Header = /^\s*(\d+)\.\s+\S+.*?(\.(pdf|png|jpg|jpeg|gif|mp4|mov|svg)|\.\.\.)\s*(\(\d+\))?\s*$/i;
     // Format 2: "Slide N", "Slide N · SubTitle", "Slide N - SubTitle", etc.
     const fmt2Header = /^\s*Slide\s+\d+/i;
 
@@ -3324,9 +3324,9 @@ function parseXLSXSlides(copyText, creativeNotes) {
         // Keywords that start a new named section inside a slide
         // Anything not Copy or Visual/Dirección is ignored (Objetivo, CTA label, etc.)
         const isCopyKw     = /^\s*Copy\s*$/i;
-        const isVisualKw   = /^\s*(Visual|Dirección de arte|Dirección)\s*$/i;
+        const isVisualKw   = /^\s*(Visual|Imagen|Dirección de arte|Dirección)\s*$/i;
         // Any keyword that closes the current block
-        const isSectionKw  = /^\s*(Slide\s+\d+|Objetivo|Visual|Dirección de arte|Dirección|Copy|CTA|Serie|Conversación|Nota|Hashtags?)\s*$/i;
+        const isSectionKw  = /^\s*(Slide\s+\d+|Objetivo|Visual|Imagen|Dirección de arte|Dirección|Copy|CTA|Serie|Conversación|Nota|Hashtags?)\s*$/i;
         // also allow "Slide N · anything"
         const isSlideStart = /^\s*Slide\s+\d+/i;
 
@@ -3487,6 +3487,7 @@ function parsePlannerWorkbook(wb) {
         const esPauta    = pauVal === 'sí' || pauVal === 'si' || pauVal === 'yes' || pauVal === 'x';
 
         const slides = parseXLSXSlides(copyRaw, creativeNotes);
+        if (slides.length) console.log(`[XLS Parse] ${codigo}: ${slides.length} slides, notas: ${slides.filter(s=>s.notas).length}`);
 
         parsed.push({
             fecha,
