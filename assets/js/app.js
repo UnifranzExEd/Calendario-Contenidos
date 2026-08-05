@@ -3286,8 +3286,8 @@ function parseXLSXSlides(copyText, creativeNotes) {
     // ── Detect format ──────────────────────────────────────────────────
     // Format 1: has lines matching "N. something.ext"
     const fmt1Header = /^\s*(\d+)\.\s+.+\.(pdf|png|jpg|jpeg|gif|mp4|mov|svg)(\s*\(\d+\))?$/i;
-    // Format 2: has lines matching "Slide N" (word "Slide" + number)
-    const fmt2Header = /^\s*Slide\s+(\d+)\s*$/i;
+    // Format 2: "Slide N", "Slide N · SubTitle", "Slide N - SubTitle", etc.
+    const fmt2Header = /^\s*Slide\s+\d+/i;
 
     const hasFmt1 = lines.some(l => fmt1Header.test(l.trim()));
     const hasFmt2 = lines.some(l => fmt2Header.test(l.trim()));
@@ -3321,58 +3321,58 @@ function parseXLSXSlides(copyText, creativeNotes) {
 
     // ── Format 2 parser ────────────────────────────────────────────────
     if (hasFmt2) {
-        // Section keywords that close a Copy block
-        const sectionKw = /^\s*(Slide\s+\d+|Objetivo|Dirección de arte|Dirección|Copy|CTA|Serie|Conversación|Nota|Hashtags?)\s*$/i;
+        // Keywords that start a new named section inside a slide
+        // Anything not Copy or Visual/Dirección is ignored (Objetivo, CTA label, etc.)
+        const isCopyKw     = /^\s*Copy\s*$/i;
+        const isVisualKw   = /^\s*(Visual|Dirección de arte|Dirección)\s*$/i;
+        // Any keyword that closes the current block
+        const isSectionKw  = /^\s*(Slide\s+\d+|Objetivo|Visual|Dirección de arte|Dirección|Copy|CTA|Serie|Conversación|Nota|Hashtags?)\s*$/i;
+        // also allow "Slide N · anything"
+        const isSlideStart = /^\s*Slide\s+\d+/i;
 
         const slides = [];
-        let inSlide = false;
-        let inCopyBlock = false;
-        let copyLines = [];
-        let slideIdx = 0;
+        let inSlide      = false;
+        let blockMode    = null;   // 'copy' | 'visual' | null
+        let copyLines    = [];
+        let visualLines  = [];
+        let slideIdx     = 0;
+
+        const flushSlide = () => {
+            if (!inSlide) return;
+            const texto = copyLines.join('\n').trim();
+            const notas = visualLines.join('\n').trim() || (slideIdx === 0 ? creativeNotes || null : null);
+            if (texto) slides.push({ texto, notas: notas || null });
+        };
 
         for (const rawLine of lines) {
             const line = rawLine.trim();
 
-            // New slide header
-            if (fmt2Header.test(line)) {
-                // Save previous copy block
-                if (inSlide && copyLines.length) {
-                    const texto = copyLines.join('\n').trim();
-                    if (texto) slides.push({ texto, notas: slideIdx === 0 ? (creativeNotes || null) : null });
-                    copyLines = [];
-                }
-                inSlide = true;
-                inCopyBlock = false;
-                slideIdx = slides.length;
+            // ── New slide header ("Slide N", "Slide N · Hook", etc.) ──
+            if (isSlideStart.test(line)) {
+                flushSlide();
+                copyLines  = [];
+                visualLines = [];
+                inSlide    = true;
+                blockMode  = null;
+                slideIdx   = slides.length;
                 continue;
             }
 
             if (!inSlide) continue;
 
-            // Entering Copy section
-            if (/^\s*Copy\s*$/i.test(line)) {
-                inCopyBlock = true;
-                continue;
-            }
+            // ── Section keyword switches block mode ──
+            if (isCopyKw.test(line))   { blockMode = 'copy';   continue; }
+            if (isVisualKw.test(line)) { blockMode = 'visual'; continue; }
+            // Other keywords (Objetivo, CTA as label, etc.) close current block
+            if (isSectionKw.test(line)) { blockMode = null; continue; }
 
-            // Leaving Copy section when another keyword appears
-            if (inCopyBlock && sectionKw.test(line) && !/^\s*Copy\s*$/i.test(line)) {
-                inCopyBlock = false;
-                continue;
-            }
-
-            // Collect copy lines
-            if (inCopyBlock) {
-                copyLines.push(rawLine);
-            }
+            // ── Collect into appropriate block ──
+            if (blockMode === 'copy')   copyLines.push(rawLine);
+            if (blockMode === 'visual') visualLines.push(rawLine);
         }
 
-        // Save last slide
-        if (inSlide && copyLines.length) {
-            const texto = copyLines.join('\n').trim();
-            if (texto) slides.push({ texto, notas: slideIdx === 0 ? (creativeNotes || null) : null });
-        }
-
+        // Flush last slide
+        flushSlide();
         return slides;
     }
 
