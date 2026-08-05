@@ -655,7 +655,9 @@ function renderCalendar() {
 
         html += `<div class="calendar-day ${isToday ? 'today' : ''}" onclick="openDayDetail('${dateStr}')" oncontextmenu="showCalendarDayContextMenu(event, '${dateStr}')">`;
         html += `<div class="day-number">${d}</div>`;
-        dayContents.slice(0, 4).forEach(c => {
+        html += `<div class="calendar-events-container">`;
+
+        dayContents.forEach(c => {
             const isPostProductor = APP_USER.rol === 'postproductor';
             const isNotSent = (!c.enviar_postproduccion || c.enviar_postproduccion == 0);
             const isGhostForPP = isPostProductor && isNotSent;
@@ -718,14 +720,11 @@ function renderCalendar() {
                         ${assignedDetails}
                      </div>`;
         });
-        if (dayContents.length > 4) {
-            html += `<div style="font-size:0.65rem;color:var(--text-muted);text-align:center;padding:2px 0">+${dayContents.length - 4} más</div>`;
-        }
 
         // Render draft items from XLS preview
         if (typeof _xlsDraftItems !== 'undefined' && _xlsDraftItems.length) {
             const draftsForDay = _xlsDraftItems.filter(dr => dr.fecha === dateStr);
-            draftsForDay.slice(0, 4).forEach(dr => {
+            draftsForDay.forEach(dr => {
                 const draftColor = dr.es_pauta && dr.es_organico ? '#a78bfa' : dr.es_pauta ? '#f59e0b' : '#22c55e';
                 const draftType = dr.es_pauta && dr.es_organico ? 'P+O' : dr.es_pauta ? 'PAUTA' : 'ORG.';
                 const titulo = dr.headline || dr.conversacion || dr.codigo || 'Sin título';
@@ -750,12 +749,9 @@ function renderCalendar() {
                         <div class="cal-ev-tab" style="color:${draftColor};">${escHtml(tabName)}</div>
                      </div>`;
             });
-            if (draftsForDay.length > 4) {
-                html += `<div style="font-size:0.6rem;color:#a78bfa;text-align:center;padding:2px 0;font-weight:600;">+${draftsForDay.length - 4} borradores más</div>`;
-            }
         }
 
-        html += '</div>';
+        html += `</div></div>`;
     }
 
     // Next month padding

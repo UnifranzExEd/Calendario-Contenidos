@@ -1490,6 +1490,31 @@ textarea.form-control {
     opacity: 0.3;
 }
 
+.calendar-events-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 2px;
+}
+
+/* Custom Scrollbar for Events Container */
+.calendar-events-container::-webkit-scrollbar {
+    width: 4px;
+}
+.calendar-events-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+.calendar-events-container::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+.calendar-events-container::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
 .calendar-day .day-number {
     font-size: 0.8rem;
     font-weight: 600;
