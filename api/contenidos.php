@@ -365,20 +365,23 @@ switch ($action) {
                 if ($esPauta && $esOrganico) $tipoDist = 'pauta+organico';
                 elseif ($esPauta)            $tipoDist = 'pauta';
 
+                // Helper to truncate strings to DB column limits
+                $t = function($v, $len = 255) { return $v ? mb_substr(strval($v), 0, $len) : null; };
+
                 $body = [
                     'pestana_id'       => $pestanaId,
                     'fecha'            => $fecha,
                     'mes'              => mesFromFecha($fecha),
                     'anio'             => intval(date('Y', strtotime($fecha))),
-                    'semana'           => $row['semana']          ?? null,
-                    'formato'          => $row['serie_editorial'] ?? null,
-                    'tema'             => $codigoPieza,
-                    'idea'             => $row['conversacion']    ?? null,
-                    'pilar'            => $row['tipo_pieza']      ?? null,
-                    'red_social'       => $row['red']             ?? null,
-                    'horario'          => $row['headline']        ?? null,
-                    'observaciones'    => $row['insight']         ?? null,
-                    'enlace_contenido' => $row['url_destino']     ?? null,
+                    'semana'           => $t($row['semana']          ?? null, 100),
+                    'formato'          => $t($row['serie_editorial'] ?? null, 100),
+                    'tema'             => $t($codigoPieza, 100),
+                    'idea'             => $t($row['conversacion']    ?? null, 500),
+                    'pilar'            => $t($row['tipo_pieza']      ?? null, 100),
+                    'red_social'       => $t($row['red']             ?? null, 100),
+                    'horario'          => $t($row['headline']        ?? null, 50),
+                    'observaciones'    => $t($row['insight']         ?? null, 500),
+                    'enlace_contenido' => $t($row['url_destino']     ?? null, 255),
                     'estado'           => 'En elaboración',
                     'creado_por'       => $user['id'],
                 ];
@@ -413,7 +416,11 @@ switch ($action) {
                 } else {
                     $cRes = sb_post('contenidos', $body);
                     $cid  = $cRes['data'][0]['id'] ?? null;
-                    if (!$cid) { $results['errors'][] = "Fila #{$idx}: error al insertar"; continue; }
+                    if (!$cid) {
+                        $sbErr = $cRes['error'] ?? ($cRes['data']['message'] ?? json_encode($cRes));
+                        $results['errors'][] = "Fila #{$idx} ({$codigoPieza}): " . $sbErr;
+                        continue;
+                    }
                     foreach ($slides as $si => $slide) {
                         sb_post('contenido_slides', ['contenido_id'=>$cid,'orden'=>$si+1,'texto'=>$slide['texto']??'','notas'=>$slide['notas']??null]);
                     }
