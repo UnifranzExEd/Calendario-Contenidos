@@ -3255,50 +3255,132 @@ async function deleteCapturaDashboard(id) {
 // ══════════════════════════════════════════════════════════════════════
 
 /**
- * Parsea el texto de la columna T en array de slides.
- * Cada bloque "N. Archivo.ext\nTexto..." se convierte en un slide.
- * El nombre de archivo (título) NO va dentro del slide.
+ * Parsea el texto de la columna T (COPY) en array de slides.
+ *
+ * Soporta dos formatos:
+ *
+ * FORMATO 1 — Numerado por archivo:
+ *   1. C1_El_Hielo.pdf
+ *   TEXTO DEL SLIDE 1
+ *
+ *   2. C1_La_Linea_slide1.png
+ *   TEXTO DEL SLIDE 2
+ *
+ * FORMATO 2 — Estructurado con secciones:
+ *   Slide 1
+ *   Objetivo
+ *   Detener el scroll.
+ *   Copy
+ *   Hay ideas que empiezan a ocupar...
+ *   Dirección de arte
+ *   Un escritorio al final del día.
+ *
+ * En el formato 2 solo se extrae el bloque "Copy" (hasta la siguiente
+ * sección: "Dirección de arte", "Objetivo", "Slide N", etc.)
  */
 function parseXLSXSlides(copyText, creativeNotes) {
     if (!copyText) return [];
-    
+
     const lines = copyText.split('\n');
-    const slides = [];
-    const slideHeaderRegex = /^\s*(\d+)\.\s+[\w\-\s]+\.(pdf|png|jpg|jpeg|gif|mp4|mov|svg)[\s\S]*/i;
-    
-    let currentSlide = null;
-    let currentLines = [];
-    
-    for (const rawLine of lines) {
-        const line = rawLine.trim();
-        // Check if this line is a slide header: "N. Filename.ext" or "N. Filename.ext (N)"
-        const headerMatch = line.match(/^(\d+)\.\s+.+\.(pdf|png|jpg|jpeg|gif|mp4|mov|svg)(\s*\(\d+\))?$/i);
-        
-        if (headerMatch) {
-            // Save previous slide
-            if (currentSlide !== null) {
-                const texto = currentLines.join('\n').trim();
-                if (texto) {
-                    slides.push({ texto, notas: currentSlide === 0 ? (creativeNotes || null) : null });
+
+    // ── Detect format ──────────────────────────────────────────────────
+    // Format 1: has lines matching "N. something.ext"
+    const fmt1Header = /^\s*(\d+)\.\s+.+\.(pdf|png|jpg|jpeg|gif|mp4|mov|svg)(\s*\(\d+\))?$/i;
+    // Format 2: has lines matching "Slide N" (word "Slide" + number)
+    const fmt2Header = /^\s*Slide\s+(\d+)\s*$/i;
+
+    const hasFmt1 = lines.some(l => fmt1Header.test(l.trim()));
+    const hasFmt2 = lines.some(l => fmt2Header.test(l.trim()));
+
+    // ── Format 1 parser ────────────────────────────────────────────────
+    if (hasFmt1 && !hasFmt2) {
+        const slides = [];
+        let currentSlide = null;
+        let currentLines = [];
+
+        for (const rawLine of lines) {
+            const line = rawLine.trim();
+            const headerMatch = line.match(fmt1Header);
+            if (headerMatch) {
+                if (currentSlide !== null) {
+                    const texto = currentLines.join('\n').trim();
+                    if (texto) slides.push({ texto, notas: currentSlide === 0 ? (creativeNotes || null) : null });
                 }
+                currentSlide = parseInt(headerMatch[1]) - 1;
+                currentLines = [];
+            } else if (currentSlide !== null) {
+                currentLines.push(rawLine);
             }
-            currentSlide = parseInt(headerMatch[1]) - 1; // 0-indexed
-            currentLines = [];
-        } else if (currentSlide !== null) {
-            currentLines.push(rawLine);
         }
-    }
-    
-    // Save last slide
-    if (currentSlide !== null) {
-        const texto = currentLines.join('\n').trim();
-        if (texto) {
-            slides.push({ texto, notas: currentSlide === 0 ? (creativeNotes || null) : null });
+        if (currentSlide !== null) {
+            const texto = currentLines.join('\n').trim();
+            if (texto) slides.push({ texto, notas: currentSlide === 0 ? (creativeNotes || null) : null });
         }
+        return slides;
     }
-    
-    return slides;
+
+    // ── Format 2 parser ────────────────────────────────────────────────
+    if (hasFmt2) {
+        // Section keywords that close a Copy block
+        const sectionKw = /^\s*(Slide\s+\d+|Objetivo|Dirección de arte|Dirección|Copy|CTA|Serie|Conversación|Nota|Hashtags?)\s*$/i;
+
+        const slides = [];
+        let inSlide = false;
+        let inCopyBlock = false;
+        let copyLines = [];
+        let slideIdx = 0;
+
+        for (const rawLine of lines) {
+            const line = rawLine.trim();
+
+            // New slide header
+            if (fmt2Header.test(line)) {
+                // Save previous copy block
+                if (inSlide && copyLines.length) {
+                    const texto = copyLines.join('\n').trim();
+                    if (texto) slides.push({ texto, notas: slideIdx === 0 ? (creativeNotes || null) : null });
+                    copyLines = [];
+                }
+                inSlide = true;
+                inCopyBlock = false;
+                slideIdx = slides.length;
+                continue;
+            }
+
+            if (!inSlide) continue;
+
+            // Entering Copy section
+            if (/^\s*Copy\s*$/i.test(line)) {
+                inCopyBlock = true;
+                continue;
+            }
+
+            // Leaving Copy section when another keyword appears
+            if (inCopyBlock && sectionKw.test(line) && !/^\s*Copy\s*$/i.test(line)) {
+                inCopyBlock = false;
+                continue;
+            }
+
+            // Collect copy lines
+            if (inCopyBlock) {
+                copyLines.push(rawLine);
+            }
+        }
+
+        // Save last slide
+        if (inSlide && copyLines.length) {
+            const texto = copyLines.join('\n').trim();
+            if (texto) slides.push({ texto, notas: slideIdx === 0 ? (creativeNotes || null) : null });
+        }
+
+        return slides;
+    }
+
+    // ── Fallback: treat entire text as one slide ───────────────────────
+    const texto = copyText.trim();
+    return texto ? [{ texto, notas: creativeNotes || null }] : [];
 }
+
 
 /**
  * Converts Excel date serial number to YYYY-MM-DD string.
