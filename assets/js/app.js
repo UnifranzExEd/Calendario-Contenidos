@@ -3255,130 +3255,115 @@ async function deleteCapturaDashboard(id) {
 // ══════════════════════════════════════════════════════════════════════
 
 /**
- * Parsea el texto de la columna T (COPY) en array de slides.
+ * ═══════════════════════════════════════════════════════════════════════
+ * UNIVERSAL SLIDE PARSER — Detección inteligente de formatos
+ * ═══════════════════════════════════════════════════════════════════════
  *
- * Soporta dos formatos:
+ * Detecta automáticamente el formato del COPY y extrae slides + notas PP.
  *
- * FORMATO 1 — Numerado por archivo:
- *   1. C1_El_Hielo.pdf
- *   TEXTO DEL SLIDE 1
+ * Formatos soportados:
+ *   A) "Slide N" / "Slide N · SubTitle"  → Copy → Visual/Imagen/Dir.Arte
+ *   B) "N. Filename.ext" o "N. Filename... (N)" → texto debajo
+ *   C) "Escena N" → guión de video (todo como un slide + notas PP)
+ *   D) Fallback: texto completo como 1 slide
  *
- *   2. C1_La_Linea_slide1.png
- *   TEXTO DEL SLIDE 2
- *
- * FORMATO 2 — Estructurado con secciones:
- *   Slide 1
- *   Objetivo
- *   Detener el scroll.
- *   Copy
- *   Hay ideas que empiezan a ocupar...
- *   Dirección de arte
- *   Un escritorio al final del día.
- *
- * En el formato 2 solo se extrae el bloque "Copy" (hasta la siguiente
- * sección: "Dirección de arte", "Objetivo", "Slide N", etc.)
+ * @param {string} copyText   - Contenido de la columna COPY
+ * @param {string} creativeNotes - Contenido de la columna Creative Notes
+ * @returns {Array<{texto:string, notas:string|null}>}
  */
 function parseXLSXSlides(copyText, creativeNotes) {
-    if (!copyText) return [];
+    if (!copyText || copyText === '—') return [];
 
-    const lines = copyText.split('\n');
+    const text = copyText.trim();
+    const lines = text.split('\n');
 
-    // ── Detect format ──────────────────────────────────────────────────
-    // Format 1: "N. filename.ext" or "N. filename... (N)" (truncated names with ellipsis)
-    const fmt1Header = /^\s*(\d+)\.\s+\S+.*?(\.(pdf|png|jpg|jpeg|gif|mp4|mov|svg)|\.\.\.)\s*(\(\d+\))?\s*$/i;
-    // Format 2: "Slide N", "Slide N · SubTitle", "Slide N - SubTitle", etc.
-    const fmt2Header = /^\s*Slide\s+\d+/i;
+    // ── Pattern detectors ──────────────────────────────────────────────
+    const pSlide  = /^\s*Slide\s+\d+/i;
+    const pFile   = /^\s*(\d+)\.\s+\S+.*?(\.(pdf|png|jpg|jpeg|gif|mp4|mov|svg|ai|psd|eps)|\.\.\.)\s*(\(\d+\))?\s*$/i;
+    const pEscena = /^\s*Escena\s+\d+/i;
 
-    const hasFmt1 = lines.some(l => fmt1Header.test(l.trim()));
-    const hasFmt2 = lines.some(l => fmt2Header.test(l.trim()));
+    const hasSlides = lines.some(l => pSlide.test(l.trim()));
+    const hasFiles  = lines.some(l => pFile.test(l.trim()));
+    const hasEscena = lines.some(l => pEscena.test(l.trim()));
 
-    // ── Format 1 parser ────────────────────────────────────────────────
-    if (hasFmt1 && !hasFmt2) {
-        const slides = [];
-        let currentSlide = null;
-        let currentLines = [];
-
-        for (const rawLine of lines) {
-            const line = rawLine.trim();
-            const headerMatch = line.match(fmt1Header);
-            if (headerMatch) {
-                if (currentSlide !== null) {
-                    const texto = currentLines.join('\n').trim();
-                    if (texto) slides.push({ texto, notas: currentSlide === 0 ? (creativeNotes || null) : null });
-                }
-                currentSlide = parseInt(headerMatch[1]) - 1;
-                currentLines = [];
-            } else if (currentSlide !== null) {
-                currentLines.push(rawLine);
-            }
-        }
-        if (currentSlide !== null) {
-            const texto = currentLines.join('\n').trim();
-            if (texto) slides.push({ texto, notas: currentSlide === 0 ? (creativeNotes || null) : null });
-        }
-        return slides;
-    }
-
-    // ── Format 2 parser ────────────────────────────────────────────────
-    if (hasFmt2) {
-        // Keywords that start a new named section inside a slide
-        // Anything not Copy or Visual/Dirección is ignored (Objetivo, CTA label, etc.)
-        const isCopyKw     = /^\s*Copy\s*$/i;
-        const isVisualKw   = /^\s*(Visual|Imagen|Dirección de arte|Dirección)\s*$/i;
-        // Any keyword that closes the current block
-        const isSectionKw  = /^\s*(Slide\s+\d+|Objetivo|Visual|Imagen|Dirección de arte|Dirección|Copy|CTA|Serie|Conversación|Nota|Hashtags?)\s*$/i;
-        // also allow "Slide N · anything"
-        const isSlideStart = /^\s*Slide\s+\d+/i;
+    // ── A) Slide N — structured sections ───────────────────────────────
+    if (hasSlides) {
+        // Section keywords: Copy / Visual / Imagen / Dirección de arte → capture
+        // Everything else (Objetivo, CTA, Serie, Conversación...) → ignore
+        const rxCopy    = /^\s*Copy\s*$/i;
+        const rxVisual  = /^\s*(Visual|Imagen|Direcci[oó]n\s+de\s+arte|Direcci[oó]n|Art\s+Direction)\s*$/i;
+        const rxSection = /^\s*(Slide\s+\d+|Objetivo|Visual|Imagen|Direcci[oó]n\s+de\s+arte|Direcci[oó]n|Art\s+Direction|Copy|CTA|Serie|Conversaci[oó]n|Nota|Hashtags?|Texto\s+en\s+pantalla)\s*$/i;
 
         const slides = [];
-        let inSlide      = false;
-        let blockMode    = null;   // 'copy' | 'visual' | null
-        let copyLines    = [];
-        let visualLines  = [];
-        let slideIdx     = 0;
+        let inSlide = false, mode = null; // 'copy'|'visual'|null
+        let copyBuf = [], visBuf = [];
 
-        const flushSlide = () => {
+        const flush = () => {
             if (!inSlide) return;
-            const texto = copyLines.join('\n').trim();
-            const notas = visualLines.join(' ').trim() || (slideIdx === 0 ? creativeNotes || null : null);
-            if (texto) slides.push({ texto, notas: notas || null });
+            const texto = copyBuf.join('\n').trim();
+            const notas = visBuf.join(' ').trim() || null;
+            if (texto) slides.push({ texto, notas });
+            copyBuf = []; visBuf = [];
         };
 
-        for (const rawLine of lines) {
-            const line = rawLine.trim();
-
-            // ── New slide header ("Slide N", "Slide N · Hook", etc.) ──
-            if (isSlideStart.test(line)) {
-                flushSlide();
-                copyLines  = [];
-                visualLines = [];
-                inSlide    = true;
-                blockMode  = null;
-                slideIdx   = slides.length;
-                continue;
-            }
-
+        for (const raw of lines) {
+            const t = raw.trim();
+            if (pSlide.test(t)) { flush(); inSlide = true; mode = null; continue; }
             if (!inSlide) continue;
-
-            // ── Section keyword switches block mode ──
-            if (isCopyKw.test(line))   { blockMode = 'copy';   continue; }
-            if (isVisualKw.test(line)) { blockMode = 'visual'; continue; }
-            // Other keywords (Objetivo, CTA as label, etc.) close current block
-            if (isSectionKw.test(line)) { blockMode = null; continue; }
-
-            // ── Collect into appropriate block ──
-            if (blockMode === 'copy')   copyLines.push(rawLine);
-            if (blockMode === 'visual') visualLines.push(rawLine);
+            if (rxCopy.test(t))   { mode = 'copy';   continue; }
+            if (rxVisual.test(t)) { mode = 'visual'; continue; }
+            if (rxSection.test(t)){ mode = null;      continue; }
+            if (mode === 'copy')   copyBuf.push(raw);
+            if (mode === 'visual') visBuf.push(raw);
         }
-
-        // Flush last slide
-        flushSlide();
-        return slides;
+        flush();
+        if (slides.length) {
+            console.log(`[Slides] Format A (Slide N): ${slides.length} slides, ${slides.filter(s=>s.notas).length} con notas PP`);
+            return slides;
+        }
     }
 
-    // ── Fallback: treat entire text as one slide ───────────────────────
-    const texto = copyText.trim();
-    return texto ? [{ texto, notas: creativeNotes || null }] : [];
+    // ── B) Numbered files ──────────────────────────────────────────────
+    if (hasFiles) {
+        const slides = [];
+        let current = null, buf = [];
+
+        for (const raw of lines) {
+            const t = raw.trim();
+            if (pFile.test(t)) {
+                if (current !== null) {
+                    const texto = buf.join('\n').trim();
+                    if (texto) slides.push({ texto, notas: current === 0 ? (creativeNotes || null) : null });
+                }
+                current = slides.length; buf = [];
+            } else if (current !== null) {
+                buf.push(raw);
+            }
+        }
+        if (current !== null) {
+            const texto = buf.join('\n').trim();
+            if (texto) slides.push({ texto, notas: current === 0 ? (creativeNotes || null) : null });
+        }
+        if (slides.length) {
+            console.log(`[Slides] Format B (N. file): ${slides.length} slides`);
+            return slides;
+        }
+    }
+
+    // ── C) Escena N — video scripts ────────────────────────────────────
+    if (hasEscena) {
+        // Video scripts: entire text as one slide, with Creative Notes as notas
+        console.log(`[Slides] Format C (Escena): 1 slide (guión de video)`);
+        return [{ texto: text, notas: creativeNotes || null }];
+    }
+
+    // ── D) Fallback ────────────────────────────────────────────────────
+    if (text.length > 10) {
+        console.log(`[Slides] Format D (fallback): 1 slide`);
+        return [{ texto: text, notas: creativeNotes || null }];
+    }
+
+    return [];
 }
 
 
@@ -3415,51 +3400,86 @@ function strVal(v) {
 }
 
 function parsePlannerWorkbook(wb) {
+    // ── Smart sheet detection ──────────────────────────────────────────
     let ws = wb.Sheets['Planner'];
     if (!ws) {
-        // Try first sheet as fallback
-        ws = wb.Sheets[wb.SheetNames[0]];
+        // Try to find the sheet with the most rows (skip index/metadata sheets)
+        let best = null, bestRows = 0;
+        for (const name of wb.SheetNames) {
+            const s = wb.Sheets[name];
+            const rows = XLSX.utils.sheet_to_json(s, { header: 1 }).length;
+            if (rows > bestRows) { best = name; bestRows = rows; }
+        }
+        ws = wb.Sheets[best || wb.SheetNames[0]];
         if (!ws) throw new Error('No se encontraron hojas en el archivo');
+        console.log(`[XLS] Sheet "Planner" no encontrado, usando "${best}" (${bestRows} filas)`);
     }
 
-    // Get all data as array of arrays (raw values, no header-name mapping)
     const allRows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
     if (allRows.length < 2) throw new Error('El archivo no tiene suficientes filas');
 
-    // Find header row (first row containing "Fecha")
+    // ── Find header row ────────────────────────────────────────────────
     let headerRowIdx = 0;
     for (let i = 0; i < Math.min(5, allRows.length); i++) {
-        if (allRows[i] && allRows[i].some(v => String(v||'').trim() === 'Fecha')) {
+        if (allRows[i] && allRows[i].some(v => /^Fecha$/i.test(String(v||'').trim()))) {
             headerRowIdx = i;
             break;
         }
     }
 
-    // Build column index map from header row
+    // ── Fuzzy column detection ─────────────────────────────────────────
+    // Normalize: lowercase, strip accents, remove underscores/spaces
+    const norm = (s) => String(s||'').trim().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // strip accents
+        .replace(/[_\s]+/g, '');                           // strip spaces/underscores
+
     const headerRow = allRows[headerRowIdx] || [];
-    const colIdx = {};
-    headerRow.forEach((val, idx) => { if (val) colIdx[String(val).trim()] = idx; });
+    const normHeaders = headerRow.map(h => h ? norm(h) : '');
 
-    if (!('Fecha' in colIdx)) throw new Error('No se encontró la columna "Fecha". Headers: ' + headerRow.filter(Boolean).join(', '));
-
-    const C = {
-        fecha:          colIdx['Fecha'],
-        codigo:         colIdx['Código_Pieza'] ?? colIdx['Codigo_Pieza'] ?? colIdx['Código Pieza'],
-        semana:         colIdx['Semana'],
-        serieEditorial: colIdx['Serie Editorial'],
-        conversacion:   colIdx['Conversación'] ?? colIdx['Conversacion'],
-        insight:        colIdx['Insight'],
-        red:            colIdx['Red'],
-        tipoPieza:      colIdx['Tipo Pieza'],
-        organico:       colIdx['Orgánico'] ?? colIdx['Organico'],
-        pauta:          colIdx['Pauta'],
-        headline:       colIdx['Headline'],
-        copy:           colIdx['COPY'],
-        cta:            colIdx['CTA'],
-        creativeNotes:  colIdx['Creative Notes'],
-        urlDestino:     colIdx['URL Destino'],
+    // Find column index by trying multiple aliases
+    const findCol = (...aliases) => {
+        const normAliases = aliases.map(a => norm(a));
+        for (let i = 0; i < normHeaders.length; i++) {
+            if (normAliases.includes(normHeaders[i])) return i;
+        }
+        // Partial match fallback
+        for (let i = 0; i < normHeaders.length; i++) {
+            for (const a of normAliases) {
+                if (normHeaders[i].includes(a) || a.includes(normHeaders[i])) return i;
+            }
+        }
+        return undefined;
     };
 
+    const C = {
+        fecha:          findCol('Fecha', 'Date', 'Fecha Publicación'),
+        codigo:         findCol('Código_Pieza', 'Codigo_Pieza', 'Código Pieza', 'Codigo Pieza', 'Código', 'Codigo', 'Code'),
+        semana:         findCol('Semana', 'Week'),
+        serieEditorial: findCol('Serie Editorial', 'Serie', 'Editorial'),
+        conversacion:   findCol('Conversación', 'Conversacion', 'Conversation'),
+        insight:        findCol('Insight', 'Insights'),
+        red:            findCol('Red', 'Red Social', 'Network', 'Plataforma'),
+        tipoPieza:      findCol('Tipo Pieza', 'Tipo_Pieza', 'Tipo de Pieza', 'Pieza'),
+        organico:       findCol('Orgánico', 'Organico', 'Organic'),
+        pauta:          findCol('Pauta', 'Paid', 'Pago'),
+        headline:       findCol('Headline', 'Titulo', 'Título'),
+        copy:           findCol('COPY', 'Copy', 'Texto', 'Content'),
+        cta:            findCol('CTA', 'Call to Action'),
+        creativeNotes:  findCol('Creative Notes', 'CreativeNotes', 'Notas Creativas', 'Notas'),
+        urlDestino:     findCol('URL Destino', 'URL', 'Link', 'Enlace'),
+    };
+
+    if (C.fecha === undefined) {
+        throw new Error('No se encontró la columna "Fecha". Headers encontrados: ' + headerRow.filter(Boolean).join(', '));
+    }
+
+    // Log detected columns
+    const detected = Object.entries(C).filter(([,v]) => v !== undefined).map(([k,v]) => `${k}→Col${v}(${headerRow[v]})`);
+    const missing  = Object.entries(C).filter(([,v]) => v === undefined).map(([k]) => k);
+    console.log(`[XLS] Columnas detectadas (${detected.length}): ${detected.join(', ')}`);
+    if (missing.length) console.warn(`[XLS] Columnas NO encontradas: ${missing.join(', ')}`);
+
+    // ── Parse rows ─────────────────────────────────────────────────────
     const parsed = [];
     for (let i = headerRowIdx + 1; i < allRows.length; i++) {
         const row = allRows[i];
@@ -3468,7 +3488,7 @@ function parsePlannerWorkbook(wb) {
         let fecha = xlsDateToYMD(row[C.fecha]);
         if (!fecha) continue;
 
-        // Normalize year: if the Excel has a year off by 1-2 from current, fix it to current year
+        // Normalize year: if the Excel has a year off by 1-2 from current, fix it
         const currentYear = new Date().getFullYear();
         const fechaYear = parseInt(fecha.substring(0, 4));
         if (fechaYear !== currentYear && Math.abs(fechaYear - currentYear) <= 2) {
@@ -3483,11 +3503,10 @@ function parsePlannerWorkbook(wb) {
 
         const orgVal  = String(C.organico !== undefined ? (row[C.organico]||'') : '').trim().toLowerCase();
         const pauVal  = String(C.pauta !== undefined ? (row[C.pauta]||'') : '').trim().toLowerCase();
-        const esOrganico = orgVal === 'sí' || orgVal === 'si' || orgVal === 'yes' || orgVal === 'x';
-        const esPauta    = pauVal === 'sí' || pauVal === 'si' || pauVal === 'yes' || pauVal === 'x';
+        const esOrganico = ['sí','si','yes','x','true','1'].includes(orgVal);
+        const esPauta    = ['sí','si','yes','x','true','1'].includes(pauVal);
 
         const slides = parseXLSXSlides(copyRaw, creativeNotes);
-        if (slides.length) console.log(`[XLS Parse] ${codigo}: ${slides.length} slides, notas: ${slides.filter(s=>s.notas).length}`);
 
         parsed.push({
             fecha,
@@ -3508,6 +3527,8 @@ function parsePlannerWorkbook(wb) {
             slides,
         });
     }
+
+    console.log(`[XLS] Total parsed: ${parsed.length} filas, ${parsed.filter(p=>p.slides.length).length} con slides`);
     return parsed;
 }
 
