@@ -3340,7 +3340,7 @@ function parseXLSXSlides(copyText, creativeNotes) {
         const flushSlide = () => {
             if (!inSlide) return;
             const texto = copyLines.join('\n').trim();
-            const notas = visualLines.join('\n').trim() || (slideIdx === 0 ? creativeNotes || null : null);
+            const notas = visualLines.join(' ').trim() || (slideIdx === 0 ? creativeNotes || null : null);
             if (texto) slides.push({ texto, notas: notas || null });
         };
 
