@@ -1054,7 +1054,12 @@ function renderContentForm(data) {
             <div style="font-size:0.75rem; color:var(--text-muted);">Sin referencia visual</div>
         </div>` : `
         <div id="imageDropZone" style="border:2px dashed var(--border-color); border-radius:var(--radius-md); padding:16px; text-align:center; cursor:pointer; transition:var(--transition); flex:1; min-height:140px; display:flex; flex-direction:column; align-items:center; justify-content:center;"
-             onclick="document.getElementById('imageFileInput').click()">
+             onclick="document.getElementById('imageFileInput').click()"
+             ondragover="event.preventDefault(); this.style.borderColor='var(--accent)';"
+             ondragleave="this.style.borderColor='var(--border-color)';"
+             ondrop="handleImageDropDashboard(event)"
+             onmouseenter="window._hoveredZone = 'referencia'"
+             onmouseleave="window._hoveredZone = 'captura'">
             <svg class="svg-icon" style="width:2rem;height:2rem;stroke-width:1; color:var(--text-muted); margin-bottom:6px;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
             <div style="font-size:0.75rem; color:var(--text-muted);">Click para subir</div>
             <div style="font-size:0.7rem; color:var(--text-muted); margin-top:3px;"><strong>Ctrl+V</strong> para pegar</div>
@@ -3201,7 +3206,16 @@ function handleCapturaFileDashboard(e, id) {
 // ── Referencia Visual (imageDropZone) Handler ─────────────────────
 function handleImageFileUpload(e) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (file) uploadReferenciaVisual(file);
+    e.target.value = '';
+}
+function handleImageDropDashboard(e) {
+    e.preventDefault();
+    e.currentTarget.style.borderColor = 'var(--border-color)';
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) uploadReferenciaVisual(file);
+}
+function uploadReferenciaVisual(file) {
     const id = state.editingId;
     if (!id) return;
     const reader = new FileReader();
@@ -3221,7 +3235,7 @@ function handleImageFileUpload(e) {
                 image_data: dataUrl
             });
             if (res.success) {
-                showToast('Imagen guardada', 'success');
+                showToast('Referencia visual guardada', 'success');
                 // Reload modal to get the real DB id for deletion
                 openEditModal(id);
             } else {
@@ -3232,8 +3246,6 @@ function handleImageFileUpload(e) {
         }
     };
     reader.readAsDataURL(file);
-    // Reset input so same file can be picked again
-    e.target.value = '';
 }
 async function deleteReferenciaVisual(imagenId) {
     if (!confirm('¿Eliminar esta imagen de referencia?')) return;
@@ -3254,12 +3266,17 @@ function handleCapturaPasteDashboard(e) {
     if (!modal || !modal.classList.contains('open')) return;
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     const id = state.editingId;
-    if (!id || !document.getElementById('capturaZoneDashboard')) return;
+    if (!id) return;
 
     const items = e.clipboardData?.items || [];
     for (const item of items) {
         if (item.type.startsWith('image/')) {
-            readAndUploadCapturaDashboard(item.getAsFile(), id);
+            const file = item.getAsFile();
+            if (window._hoveredZone === 'referencia') {
+                uploadReferenciaVisual(file);
+            } else {
+                readAndUploadCapturaDashboard(file, id);
+            }
             return;
         }
     }
