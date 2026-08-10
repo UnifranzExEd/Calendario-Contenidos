@@ -2978,7 +2978,7 @@ function downloadAIFile() {
 }
 
 function generateSchemaJSON() {
-    const pestanas = (state.pestanas || []).filter(p => p.slug);
+    const pestanas = (state.pestanas || []).filter(p => p.slug && p.slug !== 'todos');
 
     const copyField = (red) => {
         if (red === 'Facebook') return { copy_facebook: 'Copy completo para Facebook con emojis y hashtags' };
@@ -3167,6 +3167,11 @@ async function processJSONImport() {
 
     let ok = 0, fail = 0;
     for (const post of posts) {
+        // Fallback in case old JSON has 'todos'
+        if (post.pestana === 'todos') {
+            const valid = state.pestanas.find(p => p.slug && p.slug !== 'todos');
+            if (valid) post.pestana = valid.slug;
+        }
         try { await apiPost('contenidos.php?action=create', post); ok++; }
         catch(e) { fail++; console.error('Error:', post.tema, e.message); }
     }
