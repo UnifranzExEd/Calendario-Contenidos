@@ -3186,6 +3186,14 @@ function handleCapturaFileDashboard(e, id) {
     const file = e.target.files?.[0];
     if (file) readAndUploadCapturaDashboard(file, id);
 }
+// ── Referencia Visual (imageDropZone) Handler ─────────────────────
+function handleImageFileUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const id = state.editingId;
+    if (!id) return;
+    readAndUploadCapturaDashboard(file, id);
+}
 function handleCapturaPasteDashboard(e) {
     const modal = document.getElementById('contentModal');
     if (!modal || !modal.classList.contains('open')) return;
