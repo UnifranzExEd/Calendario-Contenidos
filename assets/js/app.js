@@ -1040,7 +1040,14 @@ function renderContentForm(data) {
     // LEFT HALF: Image Panel
     html += `<div style="flex:1; display:flex; flex-direction:column; min-width:0;">
         <div class="editor-section-title" style="margin-bottom:8px;"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> Referencia Visual</div>
-        <div id="imagePreviewArea" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;"></div>
+        <div id="imagePreviewArea" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+            ${(data.imagenes_ref || []).map(img => `
+                <div style="position:relative; display:inline-block;">
+                    <img src="${img.data}" style="width:72px; height:72px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color); display:block;" alt="ref">
+                    <button onclick="deleteReferenciaVisual(${img.id})" title="Eliminar" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">×</button>
+                </div>
+            `).join('')}
+        </div>
         ${isPP ? `
         <div id="imageDropZone" style="border:2px dashed var(--border-color); border-radius:var(--radius-md); padding:16px; text-align:center; flex:1; min-height:140px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:default; opacity:0.5; pointer-events:none;">
             <svg class="svg-icon" style="width:2rem;height:2rem;stroke-width:1; color:var(--text-muted); margin-bottom:6px;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
@@ -3197,7 +3204,50 @@ function handleImageFileUpload(e) {
     if (!file) return;
     const id = state.editingId;
     if (!id) return;
-    readAndUploadCapturaDashboard(file, id);
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+        const dataUrl = ev.target.result;
+        // Show preview immediately in the drop zone area
+        const preview = document.getElementById('imagePreviewArea');
+        if (preview) {
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = 'position:relative; display:inline-block; opacity:0.6;';
+            wrapper.innerHTML = `<img src="${dataUrl}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border-color);display:block;" alt="ref">`;
+            preview.appendChild(wrapper);
+        }
+        try {
+            const res = await apiPost('metricas.php?action=save_referencia_visual', {
+                contenido_id: id,
+                image_data: dataUrl
+            });
+            if (res.success) {
+                showToast('Imagen guardada', 'success');
+                // Reload modal to get the real DB id for deletion
+                openEditModal(id);
+            } else {
+                showToast('Error guardando imagen', 'error');
+            }
+        } catch(err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+    };
+    reader.readAsDataURL(file);
+    // Reset input so same file can be picked again
+    e.target.value = '';
+}
+async function deleteReferenciaVisual(imagenId) {
+    if (!confirm('¿Eliminar esta imagen de referencia?')) return;
+    try {
+        const res = await apiPost('metricas.php?action=delete_referencia_visual', { imagen_id: imagenId });
+        if (res.success) {
+            showToast('Imagen eliminada', 'success');
+            openEditModal(state.editingId);
+        } else {
+            showToast('Error eliminando imagen', 'error');
+        }
+    } catch(err) {
+        showToast('Error: ' + err.message, 'error');
+    }
 }
 function handleCapturaPasteDashboard(e) {
     const modal = document.getElementById('contentModal');

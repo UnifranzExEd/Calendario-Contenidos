@@ -43,6 +43,26 @@ switch ($action) {
         if (!$cid) jsonResponse(['error' => 'contenido_id requerido'], 400);
         sb_delete('contenido_imagenes', 'contenido_id=eq.' . $cid . '&tipo=eq.captura_post');
         jsonResponse(['success' => true]);
+    case 'save_referencia_visual':
+        if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);
+        $input   = getJsonInput();
+        $cid     = intval($input['contenido_id'] ?? 0);
+        $imgData = $input['image_data'] ?? '';
+        if (!$cid || !$imgData) jsonResponse(['error' => 'Datos incompletos'], 400);
+        $res = sb_post('contenido_imagenes', [
+            'contenido_id' => $cid,
+            'tipo'         => 'referencia_visual',
+            'filename'     => $imgData,
+        ]);
+        $newId = $res['data'][0]['id'] ?? null;
+        jsonResponse(['success' => true, 'id' => $newId]);
+    case 'delete_referencia_visual':
+        if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);
+        $input  = getJsonInput();
+        $imgId  = intval($input['imagen_id'] ?? 0);
+        if (!$imgId) jsonResponse(['error' => 'imagen_id requerido'], 400);
+        sb_delete('contenido_imagenes', 'id=eq.' . $imgId . '&tipo=eq.referencia_visual');
+        jsonResponse(['success' => true]);
     default:
         jsonResponse(['error' => 'Acción no válida'], 400);
 }

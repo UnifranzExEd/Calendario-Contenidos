@@ -85,8 +85,10 @@ switch ($action) {
 
         $imagenes = sb_get('contenido_imagenes', 'contenido_id=eq.' . $id);
         $c['captura'] = null;
+        $c['imagenes_ref'] = [];
         foreach (($imagenes['data'] ?? []) as $img) {
-            if ($img['tipo'] === 'captura_post') { $c['captura'] = $img['filename']; break; }
+            if ($img['tipo'] === 'captura_post') { $c['captura'] = $img['filename']; }
+            if ($img['tipo'] === 'referencia_visual') { $c['imagenes_ref'][] = ['id' => $img['id'], 'data' => $img['filename']]; }
         }
 
         $hashtags = sb_get('contenido_hashtags', 'contenido_id=eq.' . $id);
