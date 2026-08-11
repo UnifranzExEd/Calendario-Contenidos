@@ -1,0 +1,521 @@
+================================================================================
+  UNIFRANZ ONLINE - API DE ESTADÍSTICAS DE CONTENIDOS
+  Guía de Uso, Funcionalidad y Flujo de Integración
+  Versión 1.0 | Julio 2026
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+  ¿QUÉ ES ESTA API?
+────────────────────────────────────────────────────────────────────────────────
+
+La API de Estadísticas es un endpoint de solo-lectura que permite consultar 
+métricas y conteos del calendario de contenidos UNIFRANZ Online desde cualquier 
+sistema externo (dashboards, apps móviles, automatizaciones, reportes, etc.)
+sin necesidad de tener sesión de usuario activa.
+
+  ENDPOINT BASE:
+  https://TU-DOMINIO.com/api/stats.php
+
+  MÉTODO HTTP:    GET (solo lectura)
+  FORMATO:        JSON (UTF-8)
+  AUTENTICACIÓN:  API Key por parámetro URL
+
+
+────────────────────────────────────────────────────────────────────────────────
+  AUTENTICACIÓN
+────────────────────────────────────────────────────────────────────────────────
+
+Todas las solicitudes requieren la API Key. Se puede enviar de dos formas:
+
+  OPCIÓN A — Query parameter (recomendado para pruebas rápidas):
+  ?api_key=uf_stats_2026_key
+
+  OPCIÓN B — Header HTTP Bearer token (recomendado para producción):
+  Authorization: Bearer uf_stats_2026_key
+
+  ⚠️  IMPORTANTE: La API Key por defecto es "uf_stats_2026_key"
+      Cámbiala en el archivo: /config/auth.php
+      Línea: define('STATS_API_KEY', 'TU_NUEVA_CLAVE_SECRETA');
+
+  Si la API Key es incorrecta o no se proporciona, recibirás:
+  {
+    "success": false,
+    "error": "API Key inválida o no proporcionada. Usa ?api_key=YOUR_KEY",
+    "hint": "Contacta al administrador para obtener tu API Key"
+  }
+
+
+────────────────────────────────────────────────────────────────────────────────
+  PARÁMETROS GLOBALES OPCIONALES
+────────────────────────────────────────────────────────────────────────────────
+
+Estos parámetros funcionan con todas las acciones para filtrar resultados:
+
+  PARÁMETRO     TIPO      EJEMPLO          DESCRIPCIÓN
+  ─────────     ────      ───────          ───────────
+  mes           string    JULIO            Filtrar por mes (en MAYÚSCULAS)
+  anio          integer   2026             Filtrar por año (default: año actual)
+  pestana       string    pauta            Filtrar por pestaña (usar el slug)
+
+  Meses válidos: ENERO, FEBRERO, MARZO, ABRIL, MAYO, JUNIO, JULIO,
+                 AGOSTO, SEPTIEMBRE, OCTUBRE, NOVIEMBRE, DICIEMBRE
+
+  Slugs de pestañas comunes: pauta, redes, instagram, facebook, tiktok
+  (consultar al administrador para la lista completa de slugs disponibles)
+
+
+────────────────────────────────────────────────────────────────────────────────
+  ESTRUCTURA DE RESPUESTA ESTÁNDAR
+────────────────────────────────────────────────────────────────────────────────
+
+Todas las respuestas exitosas incluyen estos campos base:
+
+  {
+    "success": true,
+    "generated_at": "2026-07-29T18:00:00-04:00",   ← Timestamp de generación
+    ...datos específicos de la acción...
+  }
+
+  Los errores siempre incluyen:
+  {
+    "success": false,
+    "error": "Descripción del error"
+  }
+
+
+================================================================================
+  ACCIONES DISPONIBLES
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+  ACTION 1: resumen
+────────────────────────────────────────────────────────────────────────────────
+
+  DESCRIPCIÓN:
+  Vista consolidada del mes. Muestra el total de piezas y las clasifica
+  en categorías de progreso (espera, proceso, listas, publicadas) además
+  de un desglose por nivel de prioridad.
+  Por defecto usa el MES ACTUAL si no se especifica el parámetro "mes".
+
+  URL DE EJEMPLO:
+  GET /api/stats.php?action=resumen&api_key=uf_stats_2026_key
+
+  CON FILTROS:
+  GET /api/stats.php?action=resumen&mes=JULIO&anio=2026&api_key=uf_stats_2026_key
+
+  RESPUESTA:
+  {
+    "success": true,
+    "generated_at": "2026-07-29T18:00:00-04:00",
+    "periodo": {
+      "mes": "JULIO",
+      "anio": 2026
+    },
+    "resumen": {
+      "total_piezas": 47,       ← Total de piezas en el mes
+      "en_espera": 12,          ← En elaboración + Redacción
+      "en_proceso": 8,          ← En revisión + Producción + Corrección
+      "hechas": 18,             ← Aprobadas + Diseñadas + Listas
+      "publicadas": 9           ← Estado = Publicado
+    },
+    "prioridades": {
+      "alta": 5,
+      "media": 32,
+      "baja": 10
+    },
+    "detalle_por_estado": [
+      { "estado": "En elaboración", "cnt": 8 },
+      { "estado": "Redacción",      "cnt": 4 },
+      { "estado": "En revisión",    "cnt": 5 },
+      ...
+    ]
+  }
+
+  CUÁNDO USAR:
+  → Dashboard ejecutivo de resumen mensual
+  → Widget de inicio de sesión
+  → Reporte semanal automatizado
+
+
+────────────────────────────────────────────────────────────────────────────────
+  ACTION 2: piezas_por_mes
+────────────────────────────────────────────────────────────────────────────────
+
+  DESCRIPCIÓN:
+  Desglose completo del año mes a mes. Devuelve todos los 12 meses con
+  sus conteos y un sub-desglose por estado. Ideal para gráficas de barras
+  o líneas de evolución anual.
+
+  URL DE EJEMPLO:
+  GET /api/stats.php?action=piezas_por_mes&anio=2026&api_key=uf_stats_2026_key
+
+  CON FILTRO DE PESTAÑA:
+  GET /api/stats.php?action=piezas_por_mes&anio=2026&pestana=pauta&api_key=uf_stats_2026_key
+
+  RESPUESTA:
+  {
+    "success": true,
+    "generated_at": "...",
+    "anio": 2026,
+    "meses": [
+      {
+        "mes": "ENERO",
+        "total": 38,
+        "publicadas": 35,
+        "en_proceso": 0,
+        "estados": [
+          { "estado": "Publicado", "cantidad": 35 },
+          { "estado": "Aprobado",  "cantidad": 3  }
+        ]
+      },
+      {
+        "mes": "FEBRERO",
+        "total": 42,
+        "publicadas": 40,
+        ...
+      },
+      ...12 meses en total...
+    ]
+  }
+
+  CUÁNDO USAR:
+  → Gráfica de evolución anual de producción
+  → Comparación mes a mes
+  → Reporte anual de desempeño
+
+
+────────────────────────────────────────────────────────────────────────────────
+  ACTION 3: piezas_por_tipo
+────────────────────────────────────────────────────────────────────────────────
+
+  DESCRIPCIÓN:
+  Agrupa las piezas por pestaña (tipo de contenido) y estado.
+  Responde cuántas piezas hay en cada pestaña y en qué estado están.
+
+  URL DE EJEMPLO:
+  GET /api/stats.php?action=piezas_por_tipo&api_key=uf_stats_2026_key
+
+  CON FILTROS:
+  GET /api/stats.php?action=piezas_por_tipo&mes=JULIO&anio=2026&api_key=uf_stats_2026_key
+
+  RESPUESTA:
+  {
+    "success": true,
+    "generated_at": "...",
+    "periodo": { "mes": "JULIO", "anio": 2026 },
+    "tabs": [
+      {
+        "pestana": "PAUTA",
+        "slug": "pauta",
+        "total": 15,
+        "estados": [
+          { "estado": "Publicado",     "cantidad": 8  },
+          { "estado": "En elaboración","cantidad": 4  },
+          { "estado": "Aprobado",      "cantidad": 3  }
+        ]
+      },
+      {
+        "pestana": "REDES",
+        "slug": "redes",
+        "total": 32,
+        "estados": [...]
+      }
+    ]
+  }
+
+  CUÁNDO USAR:
+  → Comparar producción entre tipos de contenido
+  → Identificar qué pestaña tiene más piezas pendientes
+  → Reportes por área o equipo
+
+
+────────────────────────────────────────────────────────────────────────────────
+  ACTION 4: piezas_por_red
+────────────────────────────────────────────────────────────────────────────────
+
+  DESCRIPCIÓN:
+  Agrupa las piezas por red social (Instagram, Facebook, TikTok, etc.)
+  con conteo total y desglose por estado. Ordenado de mayor a menor.
+
+  URL DE EJEMPLO:
+  GET /api/stats.php?action=piezas_por_red&api_key=uf_stats_2026_key
+
+  CON FILTROS:
+  GET /api/stats.php?action=piezas_por_red&mes=JULIO&anio=2026&api_key=uf_stats_2026_key
+
+  RESPUESTA:
+  {
+    "success": true,
+    "generated_at": "...",
+    "periodo": { "mes": "JULIO", "anio": 2026 },
+    "redes": [
+      {
+        "red_social": "Instagram",
+        "total": 22,
+        "estados": [
+          { "estado": "Publicado", "cantidad": 12 },
+          { "estado": "Aprobado",  "cantidad": 6  },
+          { "estado": "Redacción", "cantidad": 4  }
+        ]
+      },
+      {
+        "red_social": "Facebook",
+        "total": 14,
+        "estados": [...]
+      },
+      {
+        "red_social": "TikTok",
+        "total": 11,
+        "estados": [...]
+      }
+    ]
+  }
+
+  CUÁNDO USAR:
+  → Analizar distribución de contenido por plataforma
+  → Ver qué red social tiene más contenido pendiente
+  → Balancear la estrategia de contenidos
+
+
+────────────────────────────────────────────────────────────────────────────────
+  ACTION 5: piezas_por_prioridad
+────────────────────────────────────────────────────────────────────────────────
+
+  DESCRIPCIÓN:
+  Agrupa las piezas por nivel de prioridad (Alta, Media, Baja) con desglose
+  por estado. Ordenado Alta → Media → Baja.
+
+  URL DE EJEMPLO:
+  GET /api/stats.php?action=piezas_por_prioridad&api_key=uf_stats_2026_key
+
+  CON FILTROS:
+  GET /api/stats.php?action=piezas_por_prioridad&mes=JULIO&api_key=uf_stats_2026_key
+
+  RESPUESTA:
+  {
+    "success": true,
+    "generated_at": "...",
+    "periodo": { "mes": "JULIO", "anio": 2026 },
+    "prioridades": [
+      {
+        "prioridad": "Alta",
+        "total": 5,
+        "estados": [
+          { "estado": "En revisión", "cantidad": 3 },
+          { "estado": "Aprobado",    "cantidad": 2 }
+        ]
+      },
+      {
+        "prioridad": "Media",
+        "total": 32,
+        "estados": [...]
+      },
+      {
+        "prioridad": "Baja",
+        "total": 10,
+        "estados": [...]
+      }
+    ]
+  }
+
+  CUÁNDO USAR:
+  → Monitorear piezas de alta prioridad en tiempo real
+  → Alertas cuando hay muchas piezas alta prioridad sin publicar
+  → Reportes de gestión de urgencias
+
+
+================================================================================
+  FLUJOS DE INTEGRACIÓN TÍPICOS
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+  FLUJO 1: Dashboard Ejecutivo (Reporte Mensual)
+────────────────────────────────────────────────────────────────────────────────
+
+  OBJETIVO: Mostrar el estado general de producción del mes actual
+
+  PASO 1 — Al cargar el dashboard, hacer la llamada de resumen:
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ GET /api/stats.php?action=resumen&api_key=TU_KEY                │
+  └─────────────────────────────────────────────────────────────────┘
+
+  PASO 2 — Parsear la respuesta y mostrar tarjetas:
+  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
+  │  TOTAL   │  │ EN ESPERA│  │ EN PROC. │  │ PUBLICAD.│
+  │   47     │  │   12     │  │    8     │  │    9     │
+  └──────────┘  └──────────┘  └──────────┘  └──────────┘
+
+  PASO 3 — Mostrar distribución por prioridad:
+  Alta: ████ 5
+  Media: ████████████████████████████████ 32
+  Baja: ██████████ 10
+
+  FRECUENCIA SUGERIDA: Cada 5 minutos o al cargar la página
+
+
+────────────────────────────────────────────────────────────────────────────────
+  FLUJO 2: Gráfica de Evolución Anual
+────────────────────────────────────────────────────────────────────────────────
+
+  OBJETIVO: Visualizar cómo varía la producción mes a mes en el año
+
+  PASO 1 — Llamada única al inicio del año o al cambiar de año:
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ GET /api/stats.php?action=piezas_por_mes&anio=2026&api_key=KEY  │
+  └─────────────────────────────────────────────────────────────────┘
+
+  PASO 2 — Construir arrays para la librería de gráficas:
+  labels  = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL",...]
+  totales = [38, 42, 51, 44, 48, 55, 47, 0, 0, 0, 0, 0]
+  publicadas = [35, 40, 49, 42, 46, 53, 9, 0, 0, 0, 0, 0]
+
+  PASO 3 — Renderizar con Chart.js, ApexCharts, Google Charts, etc.
+
+  FRECUENCIA SUGERIDA: Una vez al día, cachear el resultado
+
+
+────────────────────────────────────────────────────────────────────────────────
+  FLUJO 3: Alerta de Prioridades Críticas
+────────────────────────────────────────────────────────────────────────────────
+
+  OBJETIVO: Disparar alertas si hay piezas de Alta Prioridad sin publicar
+
+  PASO 1 — Consultar piezas por prioridad:
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ GET /api/stats.php?action=piezas_por_prioridad&mes=JULIO&api_key=KEY     │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  PASO 2 — Extraer las piezas ALTA que NO están publicadas:
+  alta = respuesta.prioridades[0]  // prioridad: "Alta"
+  pendientes = alta.total - (cantidad_publicadas_en_alta)
+
+  PASO 3 — Si pendientes > 3: enviar alerta (email, Slack, WhatsApp, etc.)
+
+  CÓDIGO PYTHON DE EJEMPLO:
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ import requests                                                  │
+  │                                                                  │
+  │ API_KEY = "uf_stats_2026_key"                                   │
+  │ BASE    = "https://tudominio.com/api/stats.php"                 │
+  │                                                                  │
+  │ r = requests.get(BASE, params={                                  │
+  │     "action":  "piezas_por_prioridad",                          │
+  │     "mes":     "JULIO",                                         │
+  │     "api_key": API_KEY                                           │
+  │ })                                                               │
+  │                                                                  │
+  │ data = r.json()                                                  │
+  │ for p in data["prioridades"]:                                    │
+  │     if p["prioridad"] == "Alta":                                 │
+  │         publicadas = next((e["cantidad"] for e in p["estados"]  │
+  │                     if e["estado"] == "Publicado"), 0)          │
+  │         pendientes = p["total"] - publicadas                     │
+  │         if pendientes > 3:                                       │
+  │             print(f"ALERTA: {pendientes} piezas Alta sin pub")  │
+  └─────────────────────────────────────────────────────────────────┘
+
+  FRECUENCIA SUGERIDA: Cada hora durante días laborables
+
+
+────────────────────────────────────────────────────────────────────────────────
+  FLUJO 4: Widget de Red Social en App Móvil
+────────────────────────────────────────────────────────────────────────────────
+
+  OBJETIVO: Mostrar en una app móvil cuánto contenido hay por red social
+
+  PASO 1 — Al abrir la pantalla de redes:
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ GET /api/stats.php?action=piezas_por_red&api_key=KEY                     │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  PASO 2 — Renderizar lista ordenada:
+  📸 Instagram  ████████████████████ 22 piezas
+  📘 Facebook   ██████████████       14 piezas
+  📱 TikTok     ███████████          11 piezas
+
+  PASO 3 — Al tocar una red, hacer drill-down con filtro:
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ GET /api/stats.php?action=resumen&mes=JULIO&pestana=instagram&api_key=K  │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────
+  FLUJO 5: Reporte Automático Semanal (Google Sheets / Excel)
+────────────────────────────────────────────────────────────────────────────────
+
+  OBJETIVO: Llenar automáticamente una hoja de cálculo con datos de producción
+
+  CÓDIGO PYTHON COMPLETO:
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ import requests, json                                            │
+  │                                                                  │
+  │ API_KEY = "uf_stats_2026_key"                                   │
+  │ BASE    = "https://tudominio.com/api/stats.php"                 │
+  │                                                                  │
+  │ def consultar(action, **kwargs):                                 │
+  │     params = {"action": action, "api_key": API_KEY, **kwargs}  │
+  │     r = requests.get(BASE, params=params, timeout=10)           │
+  │     r.raise_for_status()                                         │
+  │     return r.json()                                              │
+  │                                                                  │
+  │ # 1. Resumen del mes actual                                      │
+  │ resumen = consultar("resumen")                                   │
+  │ print("Total:", resumen["resumen"]["total_piezas"])              │
+  │ print("Publicadas:", resumen["resumen"]["publicadas"])           │
+  │                                                                  │
+  │ # 2. Evolución del año                                           │
+  │ anual = consultar("piezas_por_mes", anio=2026)                  │
+  │ for mes in anual["meses"]:                                       │
+  │     print(f"{mes['mes']}: {mes['total']} piezas")               │
+  │                                                                  │
+  │ # 3. Por red social                                              │
+  │ redes = consultar("piezas_por_red", mes="JULIO")                │
+  │ for red in redes["redes"]:                                       │
+  │     print(f"{red['red_social']}: {red['total']}")               │
+  └─────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+  CÓDIGOS DE ERROR HTTP
+================================================================================
+
+  CÓDIGO   SIGNIFICADO               CAUSA PROBABLE
+  ──────   ───────────               ──────────────
+  200      OK                        Todo correcto
+  400      Bad Request               Acción no válida o parámetro incorrecto
+  401      Unauthorized              API Key incorrecta o no proporcionada
+  500      Internal Server Error     Error en el servidor PHP (ver logs)
+
+
+================================================================================
+  NOTAS DE SEGURIDAD
+================================================================================
+
+  1. CAMBIA LA API KEY antes de poner en producción.
+     Archivo: /config/auth.php
+     Línea:   define('STATS_API_KEY', 'NUEVA_CLAVE_AQUI');
+
+  2. La API Key de ejemplo "uf_stats_2026_key" es PÚBLICA en esta guía.
+     No la uses en producción tal cual.
+
+  3. La API es de solo lectura. No puede crear, editar ni eliminar contenidos.
+
+  4. Los datos se filtran automáticamente — nunca expone contenidos eliminados.
+
+  5. Si necesitas más seguridad, agrega HTTPS (SSL) en el servidor web.
+
+  6. Puedes agregar restricción por IP en el servidor nginx/apache si lo deseas.
+
+
+================================================================================
+  SOPORTE Y CONTACTO
+================================================================================
+
+  Sistema:   UNIFRANZ Online - Calendario de Contenidos
+  Versión:   1.0.0
+  API URL:   https://TU-DOMINIO.com/api/stats.php
+  API Key:   Solicitar al administrador del sistema
+
+================================================================================

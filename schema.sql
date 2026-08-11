@@ -16,6 +16,7 @@ CREATE TABLE "contenidos" (
   "idea" text DEFAULT NULL,
   "red_social" varchar(30) DEFAULT NULL,
   "estado" varchar(30) DEFAULT 'En elaboración',
+  "prioridad" varchar(20) DEFAULT 'Media',
   "error_ortografico" tinyINTEGER DEFAULT 0,
   "formato" varchar(50) DEFAULT NULL,
   "horario" varchar(50) DEFAULT NULL,
@@ -158,6 +159,27 @@ CREATE TABLE "notificaciones" (
   "mensaje" text NOT NULL,
   "contenido_id" INTEGER DEFAULT NULL,
   "leida" tinyINTEGER DEFAULT 0,
+  "created_at" timestamp NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE "microtareas" (
+  "id" SERIAL PRIMARY KEY,
+  "titulo" varchar(255) NOT NULL,
+  "descripcion" text DEFAULT NULL,
+  "responsable_id" INTEGER DEFAULT NULL,
+  "proyecto_id" INTEGER DEFAULT NULL,
+  "fecha_entrega" date DEFAULT NULL,
+  "prioridad" varchar(20) DEFAULT 'Media',
+  "estado" varchar(50) DEFAULT 'Pendiente',
+  "creado_por" INTEGER NOT NULL,
+  "created_at" timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  "deleted_at" timestamp DEFAULT NULL
+);
+CREATE TABLE "microtareas_items" (
+  "id" SERIAL PRIMARY KEY,
+  "microtarea_id" INTEGER NOT NULL,
+  "texto" text NOT NULL,
+  "completada" tinyINTEGER DEFAULT 0,
   "created_at" timestamp NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE "pestanas" (

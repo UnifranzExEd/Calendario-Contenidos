@@ -76,6 +76,7 @@ CREATE TABLE contenidos (
   idea TEXT DEFAULT NULL,
   red_social VARCHAR(30) DEFAULT NULL,
   estado VARCHAR(30) DEFAULT 'En elaboración',
+  prioridad VARCHAR(20) DEFAULT 'Media',
   error_ortografico SMALLINT DEFAULT 0,
   formato VARCHAR(50) DEFAULT NULL,
   horario VARCHAR(50) DEFAULT NULL,
@@ -181,6 +182,31 @@ CREATE TABLE notificaciones (
   mensaje TEXT DEFAULT NULL,
   contenido_id INTEGER DEFAULT NULL,
   leida SMALLINT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============ TABLE: microtareas ============
+CREATE TABLE microtareas (
+  id SERIAL PRIMARY KEY,
+  titulo VARCHAR(255) NOT NULL,
+  descripcion TEXT DEFAULT NULL,
+  responsable_id INTEGER DEFAULT NULL,
+  proyecto_id INTEGER DEFAULT NULL,
+  fecha_entrega DATE DEFAULT NULL,
+  prioridad VARCHAR(20) DEFAULT 'Media',
+  estado VARCHAR(50) DEFAULT 'Pendiente',
+  creado_por INTEGER NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP DEFAULT NULL
+);
+
+-- ============ TABLE: microtareas_items ============
+CREATE TABLE microtareas_items (
+  id SERIAL PRIMARY KEY,
+  microtarea_id INTEGER NOT NULL,
+  texto TEXT NOT NULL,
+  completada SMALLINT DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

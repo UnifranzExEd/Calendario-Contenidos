@@ -140,7 +140,11 @@ switch ($action) {
 
         $cRes = sb_post('contenidos', $body);
         $cid  = $cRes['data'][0]['id'] ?? null;
-        if (!$cid) jsonResponse(['error' => 'Error al crear'], 500);
+        if (!$cid) jsonResponse(['error' => 'Error al crear', 'details' => $cRes], 500);
+
+        if (function_exists('notificarRol')) {
+            notificarRol('admin', 'nuevo_contenido', "Nuevo contenido creado: " . ($input['tema'] ?? 'Sin título'), $cid);
+        }
 
         // Detail
         $detBody = [];
@@ -172,7 +176,7 @@ switch ($action) {
         if (!$cur) jsonResponse(['error' => 'No encontrado'], 404);
 
         $fields = ['buyer','pilar','atributo','etapa','aspecto','carrera','tema','idea','red_social',
-                   'estado','error_ortografico','error_ortografico_detalle','formato','horario',
+                   'estado','prioridad','error_ortografico','error_ortografico_detalle','formato','horario',
                    'enlace_contenido','enlace_publicado','enlace_diseno','observaciones','semana',
                    'fecha','espectadores','interacciones','postproductor_id','enviar_postproduccion',
                    'formato_pieza','ubicaciones'];
@@ -223,7 +227,7 @@ switch ($action) {
         if (!$id || !$field) jsonResponse(['error' => 'ID y campo requeridos'], 400);
 
         $allowed = ['buyer','pilar','atributo','etapa','aspecto','carrera','tema','idea','red_social',
-                    'estado','error_ortografico','error_ortografico_detalle','formato','horario',
+                    'estado','prioridad','error_ortografico','error_ortografico_detalle','formato','horario',
                     'enlace_contenido','enlace_publicado','enlace_diseno','observaciones','fecha',
                     'espectadores','interacciones','semana','postproductor_id'];
         if (!in_array($field, $allowed)) jsonResponse(['error' => 'Campo no permitido'], 400);
@@ -234,9 +238,14 @@ switch ($action) {
             $body['anio'] = intval(date('Y', strtotime($value)));
         }
         if ($field === 'estado') {
-            $curRes = sb_get('contenidos', 'id=eq.' . $id . '&select=estado&limit=1');
+            $curRes = sb_get('contenidos', 'id=eq.' . $id . '&select=estado,tema&limit=1');
             $prev   = $curRes['data'][0]['estado'] ?? null;
+            $tema   = $curRes['data'][0]['tema'] ?? 'Contenido sin título';
             sb_post('historial_estado', ['contenido_id' => $id, 'estado_anterior' => $prev, 'estado_nuevo' => $value, 'usuario_id' => $user['id']]);
+            
+            if (function_exists('notificarRol') && $prev !== $value) {
+                notificarRol('admin', 'estado_cambio', "El contenido '$tema' cambió a '$value'", $id);
+            }
         }
         sb_patch('contenidos', 'id=eq.' . $id, $body);
         jsonResponse(['success' => true]);

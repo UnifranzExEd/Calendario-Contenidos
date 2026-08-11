@@ -271,10 +271,10 @@ function setView(view) {
 // ══════════════════════════════════════════
 async function checkNotifications() {
     try {
-        const res = await api('contenidos.php', { action: 'notifications' });
+        const res = await api('notificaciones.php', { action: 'count' });
         const count = (res && res.count) ? parseInt(res.count) : 0;
         const badge = document.getElementById('notifBadge');
-        const bell = document.getElementById('notifBell');
+        const bell = document.getElementById('notifBtn');
         if (badge) {
             badge.textContent = count > 0 ? count : '';
             badge.style.display = count > 0 ? 'inline-flex' : 'none';
@@ -885,6 +885,7 @@ function renderContentForm(data) {
         { nombre_campo: 'atributo',      nombre_display: 'ATRIBUTO',          tipo_campo: 'dropdown', dropdown_grupo: 'atributo',   ancho: '160px' },
         { nombre_campo: 'red_social',    nombre_display: 'RED SOCIAL',        tipo_campo: 'dropdown', dropdown_grupo: 'red_social', ancho: '160px' },
         { nombre_campo: 'estado',        nombre_display: 'ESTADO',            tipo_campo: 'dropdown', dropdown_grupo: 'estado',     ancho: '160px' },
+        { nombre_campo: 'prioridad',     nombre_display: 'PRIORIDAD',         tipo_campo: 'dropdown', dropdown_grupo: 'prioridad',  ancho: '120px' },
         { nombre_campo: 'formato',       nombre_display: 'SERIE EDITORIAL',   tipo_campo: 'dropdown', dropdown_grupo: 'formato',    ancho: '160px' },
         { nombre_campo: 'formato_pieza', nombre_display: 'FORMATO',           tipo_campo: 'texto',    ancho: '120px' },
         { nombre_campo: 'ubicaciones',   nombre_display: 'UBICACIONES',       tipo_campo: 'texto',    ancho: '160px' },
@@ -4216,3 +4217,285 @@ window.openLightbox = function(url) {
     };
     document.addEventListener('keydown', escListener);
 };
+
+// ══════════════════════════════════════════
+// NOTIFICATIONS PANEL
+// ══════════════════════════════════════════
+async function toggleNotifications() {
+    const panel = document.getElementById('notifPanel');
+    if (panel.classList.contains('show')) {
+        panel.classList.remove('show');
+    } else {
+        panel.classList.add('show');
+        await fetchNotificationsList();
+    }
+}
+
+async function fetchNotificationsList() {
+    const listEl = document.getElementById('notifList');
+    listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Cargando...</div>';
+    try {
+        const res = await api('notificaciones.php', { action: 'list' });
+        const notifs = res.data || [];
+        if (notifs.length === 0) {
+            listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">No hay notificaciones.</div>';
+            return;
+        }
+        listEl.innerHTML = notifs.map(n => {
+            const isUnread = parseInt(n.leida) === 0;
+            return `<div class="notif-item ${isUnread ? 'unread' : ''}" onclick="markNotifRead(${n.id})">
+                <div style="font-weight:600;font-size:0.85rem;color:var(--text-primary);margin-bottom:4px;">
+                    ${escHtml(n.tipo)}
+                </div>
+                <div style="font-size:0.8rem;color:var(--text-secondary);">
+                    ${escHtml(n.mensaje)}
+                </div>
+                <div style="font-size:0.7rem;color:var(--text-muted);margin-top:6px;">
+                    ${new Date(n.created_at).toLocaleString()}
+                </div>
+            </div>`;
+        }).join('');
+    } catch (err) {
+        listEl.innerHTML = `<div style="text-align:center;padding:20px;color:var(--danger)">Error al cargar</div>`;
+    }
+}
+
+async function markNotifRead(id) {
+    try {
+        await apiPost('notificaciones.php?action=read', { id });
+        checkNotifications();
+        fetchNotificationsList();
+    } catch(err) { console.error(err); }
+}
+
+async function markAllRead() {
+    try {
+        await apiPost('notificaciones.php?action=read', {});
+        checkNotifications();
+        toggleNotifications();
+    } catch(err) { console.error(err); }
+}
+
+
+// ══════════════════════════════════════════
+// MICROTAREAS
+// ══════════════════════════════════════════
+let currentMicrotareas = [];
+
+function showMicrotareasView() {
+    // Nav logic
+    document.querySelectorAll('.nav-item[data-tab], .tab-item[data-tab]').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('#navMicrotareas').forEach(el => el.classList.add('active'));
+    document.getElementById('headerTitle').textContent = 'MICROTAREAS';
+    
+    // View logic
+    document.getElementById('tableView').style.display = 'none';
+    document.getElementById('calendarView').style.display = 'none';
+    document.getElementById('adminSection').style.display = 'none';
+    document.getElementById('microtareasView').style.display = 'flex';
+    
+    loadMicrotareas();
+}
+
+async function loadMicrotareas() {
+    try {
+        const res = await api('microtareas.php', { action: 'list' });
+        currentMicrotareas = res.data || [];
+        renderKanban();
+    } catch (err) {
+        showToast('Error al cargar microtareas', 'error');
+    }
+}
+
+function renderKanban() {
+    const cols = {
+        'Pendiente': document.getElementById('colPendiente'),
+        'En proceso': document.getElementById('colProceso'),
+        'Completada': document.getElementById('colCompletada')
+    };
+    const counts = {
+        'Pendiente': 0, 'En proceso': 0, 'Completada': 0
+    };
+    
+    // Clear columns
+    Object.values(cols).forEach(col => col.innerHTML = '');
+
+    currentMicrotareas.forEach(mt => {
+        const estado = cols[mt.estado] ? mt.estado : 'Pendiente';
+        counts[estado]++;
+        
+        let checklistHtml = '';
+        if (mt.checklist && mt.checklist.length) {
+            const completed = mt.checklist.filter(c => parseInt(c.completada) === 1).length;
+            const pct = Math.round((completed / mt.checklist.length) * 100);
+            checklistHtml = `<div class="checklist-progress">
+                <svg class="svg-icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                ${completed}/${mt.checklist.length} (${pct}%)
+            </div>`;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'kanban-card';
+        card.draggable = true;
+        card.dataset.id = mt.id;
+        card.onclick = () => editMicrotarea(mt.id);
+        
+        // Setup Drag & Drop
+        card.addEventListener('dragstart', e => {
+            e.dataTransfer.setData('text/plain', mt.id);
+            card.style.opacity = '0.5';
+        });
+        card.addEventListener('dragend', () => card.style.opacity = '1');
+
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                <span class="prio-badge prio-${mt.prioridad || 'Media'}">${mt.prioridad || 'Media'}</span>
+                ${mt.fecha_entrega ? `<span style="font-size:0.7rem;color:var(--text-muted);"><svg class="svg-icon" viewBox="0 0 24 24" style="width:10px;height:10px;margin-right:2px;vertical-align:middle"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>${new Date(mt.fecha_entrega + 'T00:00:00').toLocaleDateString()}</span>` : ''}
+            </div>
+            <div class="kanban-card-title">${escHtml(mt.titulo)}</div>
+            ${mt.descripcion ? `<div class="kanban-card-desc">${escHtml(mt.descripcion)}</div>` : ''}
+            <div class="kanban-card-meta">
+                ${checklistHtml}
+                <span style="font-weight:500;">${escHtml(mt.responsable_nombre || 'Sin asignar')}</span>
+            </div>
+        `;
+        cols[estado].appendChild(card);
+    });
+
+    document.getElementById('countPendiente').textContent = counts['Pendiente'];
+    document.getElementById('countProceso').textContent = counts['En proceso'];
+    document.getElementById('countCompletada').textContent = counts['Completada'];
+}
+
+// Setup Kanban drag and drop zones
+document.querySelectorAll('.kanban-col').forEach(col => {
+    col.addEventListener('dragover', e => {
+        e.preventDefault();
+        col.style.background = 'var(--bg-glass-hover)';
+    });
+    col.addEventListener('dragleave', () => col.style.background = 'var(--bg-card)');
+    col.addEventListener('drop', async e => {
+        e.preventDefault();
+        col.style.background = 'var(--bg-card)';
+        const id = e.dataTransfer.getData('text/plain');
+        const nuevoEstado = col.dataset.estado;
+        if (id && nuevoEstado) {
+            const mt = currentMicrotareas.find(m => m.id == id);
+            if (mt && mt.estado !== nuevoEstado) {
+                mt.estado = nuevoEstado;
+                renderKanban(); // Optimistic update
+                try {
+                    await apiPost('microtareas.php?action=update', { id, estado: nuevoEstado });
+                    showToast('Estado actualizado');
+                } catch(err) {
+                    showToast('Error: ' + err.message, 'error');
+                    loadMicrotareas(); // Reload on fail
+                }
+            }
+        }
+    });
+});
+
+function openMicrotareaModal() {
+    document.getElementById('mtId').value = '';
+    document.getElementById('mtTitulo').value = '';
+    document.getElementById('mtDescripcion').value = '';
+    document.getElementById('mtFecha').value = '';
+    document.getElementById('mtPrioridad').value = 'Media';
+    document.getElementById('mtEstado').value = 'Pendiente';
+    
+    // Populate dropdown
+    const respSelect = document.getElementById('mtResponsable');
+    respSelect.innerHTML = '<option value="">-- Asignar Responsable --</option>' + 
+        state.postproductores.map(u => `<option value="${u.id}">${escHtml(u.nombre)}</option>`).join('');
+        
+    document.getElementById('mtChecklistContainer').innerHTML = '';
+    
+    openModal('microtareaModal');
+}
+
+function editMicrotarea(id) {
+    const mt = currentMicrotareas.find(m => m.id == id);
+    if (!mt) return;
+    
+    openMicrotareaModal();
+    document.getElementById('mtModalTitle').textContent = 'Editar Microtarea';
+    document.getElementById('mtId').value = mt.id;
+    document.getElementById('mtTitulo').value = mt.titulo || '';
+    document.getElementById('mtDescripcion').value = mt.descripcion || '';
+    document.getElementById('mtFecha').value = mt.fecha_entrega || '';
+    document.getElementById('mtPrioridad').value = mt.prioridad || 'Media';
+    document.getElementById('mtEstado').value = mt.estado || 'Pendiente';
+    document.getElementById('mtResponsable').value = mt.responsable_id || '';
+    
+    const container = document.getElementById('mtChecklistContainer');
+    container.innerHTML = '';
+    if (mt.checklist) {
+        mt.checklist.forEach(item => {
+            addMicrotareaChecklistItem(item);
+        });
+    }
+}
+
+function addMicrotareaChecklistItem(item = null) {
+    const container = document.getElementById('mtChecklistContainer');
+    const div = document.createElement('div');
+    div.style.display = 'flex';
+    div.style.gap = '8px';
+    div.style.alignItems = 'center';
+    
+    const isCompleted = item && parseInt(item.completada) === 1;
+    
+    div.innerHTML = `
+        <input type="hidden" class="chk-id" value="${item ? item.id : ''}">
+        <input type="checkbox" class="chk-done" ${isCompleted ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--success);">
+        <input type="text" class="form-control chk-text" value="${escHtml(item ? item.texto : '')}" placeholder="Describa el item..." style="flex:1;">
+        <button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">×</button>
+    `;
+    container.appendChild(div);
+}
+
+function closeMicrotareaModal() {
+    closeModal('microtareaModal');
+}
+
+async function saveMicrotarea() {
+    const id = document.getElementById('mtId').value;
+    const isEdit = !!id;
+    const action = isEdit ? 'update' : 'create';
+    
+    const titulo = document.getElementById('mtTitulo').value.trim();
+    if (!titulo) { showToast('El título es requerido', 'error'); return; }
+    
+    const checklist = [];
+    document.querySelectorAll('#mtChecklistContainer > div').forEach(div => {
+        const text = div.querySelector('.chk-text').value.trim();
+        if (text) {
+            checklist.push({
+                id: div.querySelector('.chk-id').value,
+                texto: text,
+                completada: div.querySelector('.chk-done').checked ? 1 : 0
+            });
+        }
+    });
+
+    const data = {
+        titulo,
+        descripcion: document.getElementById('mtDescripcion').value.trim(),
+        fecha_entrega: document.getElementById('mtFecha').value || null,
+        prioridad: document.getElementById('mtPrioridad').value,
+        estado: document.getElementById('mtEstado').value,
+        responsable_id: document.getElementById('mtResponsable').value || null,
+        checklist
+    };
+    if (isEdit) data.id = id;
+
+    try {
+        await apiPost('microtareas.php?action=' + action, data);
+        showToast('Microtarea guardada con éxito', 'success');
+        closeMicrotareaModal();
+        loadMicrotareas();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}

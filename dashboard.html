@@ -58,6 +58,14 @@
 
         <!-- Navigation -->
         <nav class="sidebar-nav">
+            <!-- Microtareas Section -->
+            <div class="nav-section">
+                <div class="nav-section-title">Productividad</div>
+                <button class="nav-item" id="navMicrotareas" onclick="showMicrotareasView()">
+                    <span><svg class="svg-icon" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></span> Microtareas
+                </button>
+            </div>
+
             <div class="nav-section">
                 <div class="nav-section-title">Pestañas</div>
                 <div id="tabNavigation"></div>
@@ -163,6 +171,31 @@
             <div class="calendar-list" id="calendarList"></div>
         </div>
 
+        <!-- MICROTAREAS VIEW -->
+        <div class="microtareas-wrapper" id="microtareasView" style="display:none; padding: 24px; flex:1; flex-direction:column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="font-size:1.2rem; font-weight:700;">Tablero de Microtareas</h2>
+                <button class="btn btn-primary btn-sm" onclick="openMicrotareaModal()" style="display:flex; align-items:center; gap:6px;">
+                    <svg class="svg-icon" viewBox="0 0 24 24" style="width:16px;height:16px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Nueva Tarea
+                </button>
+            </div>
+            
+            <div class="kanban-board" id="kanbanBoard" style="display:flex; gap:20px; flex:1; overflow-x:auto;">
+                <div class="kanban-col" data-estado="Pendiente">
+                    <div class="kanban-col-header">Pendientes <span class="kanban-count" id="countPendiente">0</span></div>
+                    <div class="kanban-items" id="colPendiente"></div>
+                </div>
+                <div class="kanban-col" data-estado="En proceso">
+                    <div class="kanban-col-header" style="color:var(--warning)">En Proceso <span class="kanban-count" id="countProceso">0</span></div>
+                    <div class="kanban-items" id="colProceso"></div>
+                </div>
+                <div class="kanban-col" data-estado="Completada">
+                    <div class="kanban-col-header" style="color:var(--success)">Completadas <span class="kanban-count" id="countCompletada">0</span></div>
+                    <div class="kanban-items" id="colCompletada"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- ADMIN SECTIONS -->
         <div id="adminSection" style="display:none;"></div>
 
@@ -192,6 +225,66 @@
         <div class="modal-footer" id="modalFooter">
             <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
             <button class="btn btn-primary" onclick="saveContent()" id="btnSave">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MICROTAREA MODAL ── -->
+<div class="modal-overlay" id="microtareaModal">
+    <div class="modal" style="max-width: 600px;">
+        <div class="modal-header">
+            <h2 id="mtModalTitle">Nueva Microtarea</h2>
+            <button class="modal-close" onclick="closeMicrotareaModal()">×</button>
+        </div>
+        <div class="modal-body" id="mtModalBody">
+            <input type="hidden" id="mtId">
+            <div class="form-group" style="margin-bottom:12px;">
+                <label>Título *</label>
+                <input type="text" id="mtTitulo" class="form-control" placeholder="Ej: Piezas para campaña X">
+            </div>
+            <div class="form-group" style="margin-bottom:12px;">
+                <label>Descripción</label>
+                <textarea id="mtDescripcion" class="form-control" style="min-height:60px;" placeholder="Opcional..."></textarea>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div class="form-group">
+                    <label>Fecha de entrega</label>
+                    <input type="date" id="mtFecha" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Responsable</label>
+                    <select id="mtResponsable" class="form-control"></select>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+                <div class="form-group">
+                    <label>Prioridad</label>
+                    <select id="mtPrioridad" class="form-control">
+                        <option value="Alta">Alta (Urgente)</option>
+                        <option value="Media" selected>Media (Normal)</option>
+                        <option value="Baja">Baja (Secundario)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Estado</label>
+                    <select id="mtEstado" class="form-control">
+                        <option value="Pendiente" selected>Pendiente</option>
+                        <option value="En proceso">En proceso</option>
+                        <option value="Completada">Completada</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>Checklist de Subtareas</span>
+                    <button class="btn btn-sm btn-secondary" onclick="addMicrotareaChecklistItem()">+ Item</button>
+                </label>
+                <div id="mtChecklistContainer" style="display:flex; flex-direction:column; gap:8px; margin-top:8px;"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeMicrotareaModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="saveMicrotarea()" id="btnSaveMt">Guardar Tarea</button>
         </div>
     </div>
 </div>

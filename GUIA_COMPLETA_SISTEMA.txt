@@ -1,0 +1,1071 @@
+================================================================================
+  UNIFRANZ ONLINE — GUÍA COMPLETA DEL SISTEMA
+  APIs, Microtareas, Prioridades, Notificaciones y Flujos de Integración
+  Para replicar en proyectos similares
+  Versión 2.0 | Agosto 2026
+================================================================================
+
+Esta guía documenta la arquitectura completa del sistema de Calendario de
+Contenidos UNIFRANZ Online. Está diseñada para que puedas replicar el mismo
+flujo de trabajo, APIs y lógica en cualquier proyecto similar.
+
+URL base de producción: https://organicos.page.gd/
+Directorio de APIs:     /api/
+Configuración:          /config/auth.php  y  /config/database.php
+
+
+================================================================================
+  ÍNDICE
+================================================================================
+
+  1. ARQUITECTURA GENERAL DEL SISTEMA
+  2. BASE DE DATOS — ESTRUCTURA DE TABLAS CLAVE
+  3. AUTENTICACIÓN Y API KEYS
+  4. API DE ORGÁNICOS — Flujo de trabajo principal
+  5. API DE ESTADÍSTICAS — Métricas y reportes
+  6. API DE MICROTAREAS — Sistema de tareas del equipo
+  7. SISTEMA DE PRIORIDADES
+  8. BARRA DE NOTIFICACIONES
+  9. FLUJOS DE INTEGRACIÓN COMPLETOS (Make, n8n, Python, JS)
+  10. CÓMO REPLICAR EN OTRO PROYECTO
+
+
+================================================================================
+  1. ARQUITECTURA GENERAL DEL SISTEMA
+================================================================================
+
+El sistema tiene DOS tipos de acceso:
+
+  ┌────────────────────────────────────────────────────────────┐
+  │  TIPO A: Acceso con sesión (usuarios internos)             │
+  │  → Requiere login en index.html                            │
+  │  → Cookies de sesión PHP                                   │
+  │  → Accede a contenidos.php, campos.php, dropdowns.php, etc.│
+  └────────────────────────────────────────────────────────────┘
+
+  ┌────────────────────────────────────────────────────────────┐
+  │  TIPO B: Acceso con API Key (sistemas externos)            │
+  │  → No requiere login                                       │
+  │  → Parámetro ?api_key=TU_CLAVE en la URL                  │
+  │  → Accede a organicos.php, stats.php, microtareas.php      │
+  └────────────────────────────────────────────────────────────┘
+
+FLUJO DE DATOS:
+  Base de datos MySQL
+       ↓
+  APIs PHP (/api/*.php)
+       ↓
+  JSON de respuesta
+       ↓
+  Frontend (dashboard.html / app.js)
+  — o —
+  Herramientas externas (Make, n8n, Python, apps móviles, etc.)
+
+
+================================================================================
+  2. BASE DE DATOS — ESTRUCTURA DE TABLAS CLAVE
+================================================================================
+
+── TABLA: contenidos ──────────────────────────────────────────────────────────
+  Tabla principal. Un registro = una pieza de contenido en el calendario.
+
+  COLUMNA               TIPO          DESCRIPCIÓN
+  ──────────────────    ──────────    ──────────────────────────────────────
+  id                    INT (PK)      Identificador único
+  pestana_id            INT (FK)      A qué pestaña pertenece (redes, pauta...)
+  tema                  TEXT          Título/tema del contenido (campo principal)
+  idea                  TEXT          Descripción extendida o idea del contenido
+  fecha                 DATE          Fecha de publicación planificada (YYYY-MM-DD)
+  mes                   VARCHAR       Mes en mayúsculas (ENERO, FEBRERO, etc.)
+  anio                  INT           Año (2026, 2027...)
+  semana                INT           Número de semana del año
+  red_social            VARCHAR       Instagram, Facebook, TikTok, YouTube...
+  formato               VARCHAR       Post, Reel, Carrusel, Story, Video...
+  estado                VARCHAR       Ver sección de ESTADOS más abajo
+  prioridad             VARCHAR       Alta / Media / Baja (default: Media)
+  buyer                 VARCHAR       Segmento de audiencia o buyer persona
+  pilar                 VARCHAR       Pilar de contenido (Educativo, Emocional...)
+  carrera               VARCHAR       Carrera universitaria relacionada
+  enviar_postproduccion TINYINT(1)    1=Sí mandar a post-producción, 0=No
+  postproductor_id      INT (FK)      Usuario encargado de post-producción
+  enlace_contenido      TEXT          Link del archivo de producción (Drive/etc.)
+  enlace_publicado      TEXT          Link del post ya publicado
+  enlace_diseno         TEXT          Link del archivo de diseño final
+  creado_por            INT (FK)      ID del usuario que creó el registro
+  actualizado_por       INT (FK)      ID del último usuario que editó
+  created_at            DATETIME      Fecha de creación automática
+  deleted_at            DATETIME      NULL=activo, fecha=eliminado (soft delete)
+
+── ESTADOS VÁLIDOS ─────────────────────────────────────────────────────────────
+  Los estados siguen este flujo de producción:
+
+  En elaboración  →  Redacción  →  En revisión  →  Producción
+       →  Corrección  →  Aprobado  →  Programado  →  Publicado
+
+  GRUPOS DE ESTADO (para la lógica de orgánicos y stats):
+  • EN ESPERA:  'En elaboración', 'Redacción'
+  • EN PROCESO: 'En revisión', 'Producción', 'Corrección', 'Programado'
+  • HECHOS:     'Aprobado', 'Diseñado', 'Listo', 'Por publicar'
+  • PUBLICADO:  'Publicado'  ← El único estado final "hecho"
+
+── TABLA: pestanas ─────────────────────────────────────────────────────────────
+  Las "pestañas" son las categorías o secciones del calendario.
+
+  id, nombre (texto visible), slug (identificador URL), color, enlace_carpeta_base
+
+  Slugs comunes: pauta, redes, instagram, facebook, tiktok, youtube
+
+── TABLA: contenido_detalle ────────────────────────────────────────────────────
+  Datos extra de cada contenido (copies para redes).
+  Relación 1:1 con contenidos.
+
+  contenido_id, copy_facebook, copy_instagram, copy_tiktok
+
+── TABLA: microtareas ──────────────────────────────────────────────────────────
+  Tareas internas del equipo (independientes del calendario de contenidos).
+
+  id, titulo, descripcion, responsable_id, proyecto_id, fecha_entrega,
+  prioridad (Alta/Media/Baja), estado (Pendiente/En proceso/Completada),
+  creado_por, created_at, updated_at, deleted_at
+
+── TABLA: microtareas_items ────────────────────────────────────────────────────
+  Checklist de subtareas de cada microtarea.
+
+  id, microtarea_id (FK), texto, completada (0/1), created_at
+
+── TABLA: usuarios ─────────────────────────────────────────────────────────────
+  id, nombre, email, password (hash bcrypt), rol, avatar, activo
+
+  Roles disponibles: admin, community, postproductor
+
+── TABLA: metricas ─────────────────────────────────────────────────────────────
+  Métricas de rendimiento de contenidos ya publicados.
+
+  contenido_id, espectadores, likes, comentarios, compartidos,
+  guardados, alcance, clics, fecha_registro
+
+
+================================================================================
+  3. AUTENTICACIÓN Y API KEYS
+================================================================================
+
+── ARCHIVO DE CONFIGURACIÓN: /config/auth.php ──────────────────────────────────
+
+  Aquí se definen las API Keys públicas:
+
+  define('STATS_API_KEY',    'sk_stats_e727955ad8a6cc63641ebd045900757d');
+  define('ORGANICOS_API_KEY','sk_org_8ef6ff5016983759f95810c5f70e582f');
+
+  ⚠️  IMPORTANTE: En tu proyecto nuevo, cambia estas claves por unas propias.
+      Genera claves seguras con: openssl rand -hex 32
+
+── CÓMO AUTENTICARSE EN LAS APIs PÚBLICAS ──────────────────────────────────────
+
+  OPCIÓN A — Parámetro URL (más fácil para pruebas):
+    https://organicos.page.gd/api/organicos.php?api_key=sk_org_8ef6ff5016983759f95810c5f70e582f
+
+  OPCIÓN B — Header HTTP (más seguro para producción):
+    Authorization: Bearer sk_org_8ef6ff5016983759f95810c5f70e582f
+
+── RESPUESTA SI LA KEY ES INCORRECTA ───────────────────────────────────────────
+  HTTP 401
+  {
+    "success": false,
+    "error": "API Key inválida o no proporcionada"
+  }
+
+── TABLAS DE APIs Y SUS KEYS ───────────────────────────────────────────────────
+
+  ENDPOINT                    KEY REQUERIDA       ACCESO
+  ────────────────────────    ────────────────    ────────────────
+  /api/stats.php              STATS_API_KEY       Solo lectura GET
+  /api/organicos.php          ORGANICOS_API_KEY   Solo lectura GET
+  /api/microtareas.php        ORGANICOS_API_KEY   Lectura + Escritura GET/POST
+  /api/contenidos.php         Sesión de usuario   CRUD completo
+  /api/campos.php             Sesión de usuario   Config campos
+  /api/usuarios.php           Sesión de usuario   Gestión usuarios
+
+
+================================================================================
+  4. API DE ORGÁNICOS — Flujo de trabajo principal
+================================================================================
+
+  ENDPOINT:  GET https://organicos.page.gd/api/organicos.php
+  KEY:       ?api_key=sk_org_8ef6ff5016983759f95810c5f70e582f
+  CORS:      Habilitado (*) — se puede llamar desde cualquier dominio
+
+── ¿QUÉ DEVUELVE? ──────────────────────────────────────────────────────────────
+
+  Agrupa los contenidos por PERSONA ENCARGADA y FECHA DE ENTREGA.
+  Para cada grupo, cuenta cuántos están "hechos" y cuántos "no hechos".
+
+  Un contenido se considera HECHO si su estado está en:
+    ['Publicado', 'Aprobado', 'Diseñado', 'Listo', 'Por publicar']
+
+  Un contenido se considera NO HECHO si está en:
+    ['En elaboración', 'Redacción', 'En revisión', 'Producción', 'Corrección']
+
+── PARÁMETROS DE FILTRO ────────────────────────────────────────────────────────
+
+  PARÁMETRO     EJEMPLO         DESCRIPCIÓN
+  ─────────     ───────         ─────────────────────────────────────────────
+  mes           AGOSTO          Mes en mayúsculas (default: mes actual)
+  anio          2026            Año (default: año actual)
+  responsable   nombre_persona  Filtra por nombre de persona encargada
+  pestana       pauta           Filtra por slug de pestaña
+
+── EJEMPLOS DE USO ─────────────────────────────────────────────────────────────
+
+  # Orgánicos del mes actual
+  GET /api/organicos.php?api_key=KEY
+
+  # Orgánicos de agosto 2026
+  GET /api/organicos.php?api_key=KEY&mes=AGOSTO&anio=2026
+
+  # Solo los de una persona
+  GET /api/organicos.php?api_key=KEY&responsable=Carla&mes=AGOSTO
+
+  # Solo de la pestaña "redes"
+  GET /api/organicos.php?api_key=KEY&pestana=redes&mes=AGOSTO
+
+── ESTRUCTURA COMPLETA DE RESPUESTA ────────────────────────────────────────────
+
+  {
+    "success": true,
+    "generated_at": "2026-08-11T18:00:00-04:00",
+
+    "periodo": {
+      "mes": "AGOSTO",
+      "anio": 2026
+    },
+
+    "totales": {
+      "organicos_hechos":      9,       ← Total de contenidos "hechos" del mes
+      "organicos_no_hechos":  15,       ← Total de contenidos pendientes
+      "total":                24,       ← Total general
+      "porcentaje_completado": 37.5     ← Porcentaje de avance
+    },
+
+    "por_persona": [
+      {
+        "persona_encargada":   "Carla Adriana Melgar",
+        "organicos_hechos":    4,
+        "organicos_no_hechos": 8,
+        "total":               12
+      },
+      {
+        "persona_encargada":   "Juan Pérez",
+        "organicos_hechos":    5,
+        "organicos_no_hechos": 7,
+        "total":               12
+      }
+    ],
+
+    "organicos": [
+      {
+        "persona_encargada":   "Carla Adriana Melgar",
+        "fecha":               "2026-08-15",
+        "mes":                 "AGOSTO",
+        "anio":                2026,
+        "organicos_hechos":    2,
+        "organicos_no_hechos": 3,
+        "total":               5,
+        "detalle": [
+          {
+            "id":                      123,
+            "titulo":                  "5 tips para estudiar",     ← Tema del post
+            "estado":                  "En elaboración",
+            "red_social":              "Instagram",
+            "prioridad":               "Alta",
+            "pestana":                 "Redes Sociales",
+            "hecho":                   false,
+            "enviar_postproduccion":   true
+          },
+          {
+            "id":                      124,
+            "titulo":                  "Video institucional UNIFRANZ",
+            "estado":                  "Publicado",
+            "red_social":              "YouTube",
+            "prioridad":               "Media",
+            "pestana":                 "Redes Sociales",
+            "hecho":                   true,
+            "enviar_postproduccion":   false
+          }
+        ]
+      }
+    ]
+  }
+
+── LÓGICA DE AGRUPACIÓN (para replicar) ────────────────────────────────────────
+
+  1. La BD une contenidos + pestanas + usuarios
+  2. La "persona encargada" es: postproductor_id (si existe) o creado_por
+  3. Se agrupa por: persona_encargada + fecha
+  4. Para cada grupo se itera el array detalle y se cuenta si está hecho
+  5. Los resultados se ordenan por fecha ASC
+
+
+================================================================================
+  5. API DE ESTADÍSTICAS — Métricas y reportes
+================================================================================
+
+  ENDPOINT:  GET https://organicos.page.gd/api/stats.php
+  KEY:       ?api_key=sk_stats_e727955ad8a6cc63641ebd045900757d
+  ACCESO:    Solo lectura (GET)
+
+── ACCIONES DISPONIBLES ────────────────────────────────────────────────────────
+
+  ACTION              DESCRIPCIÓN                              PARÁMETROS EXTRA
+  ──────────────────  ───────────────────────────────────────  ────────────────
+  resumen             Vista consolidada del mes                mes, anio
+  piezas_por_mes      Evolución mes a mes del año              anio, pestana
+  piezas_por_tipo     Agrupado por pestaña y estado            mes, anio
+  piezas_por_red      Agrupado por red social y estado         mes, anio
+  piezas_por_prioridad Agrupado por prioridad y estado         mes, anio
+
+── EJEMPLOS RÁPIDOS ────────────────────────────────────────────────────────────
+
+  # Resumen del mes actual
+  GET /api/stats.php?action=resumen&api_key=KEY
+
+  # Resumen de agosto 2026
+  GET /api/stats.php?action=resumen&mes=AGOSTO&anio=2026&api_key=KEY
+
+  # Evolución anual 2026
+  GET /api/stats.php?action=piezas_por_mes&anio=2026&api_key=KEY
+
+  # Por red social en agosto
+  GET /api/stats.php?action=piezas_por_red&mes=AGOSTO&api_key=KEY
+
+  # Por prioridad (para alertas)
+  GET /api/stats.php?action=piezas_por_prioridad&mes=AGOSTO&api_key=KEY
+
+── RESPUESTA: action=resumen ───────────────────────────────────────────────────
+
+  {
+    "success": true,
+    "generated_at": "...",
+    "periodo": { "mes": "AGOSTO", "anio": 2026 },
+    "resumen": {
+      "total_piezas":  47,
+      "en_espera":     12,    ← En elaboración + Redacción
+      "en_proceso":     8,    ← En revisión + Producción + Corrección + Programado
+      "hechas":        18,    ← Aprobado + Diseñado + Listo + Por publicar
+      "publicadas":     9     ← Solo "Publicado"
+    },
+    "prioridades": {
+      "alta":   5,
+      "media": 32,
+      "baja":  10
+    },
+    "detalle_por_estado": [
+      { "estado": "En elaboración", "cnt": 8 },
+      { "estado": "Publicado",      "cnt": 9 },
+      ...
+    ]
+  }
+
+── RESPUESTA: action=piezas_por_mes ────────────────────────────────────────────
+
+  {
+    "success": true,
+    "anio": 2026,
+    "meses": [
+      {
+        "mes": "ENERO",
+        "total": 38,
+        "publicadas": 35,
+        "en_proceso": 0,
+        "estados": [
+          { "estado": "Publicado", "cantidad": 35 },
+          { "estado": "Aprobado",  "cantidad": 3  }
+        ]
+      },
+      { "mes": "FEBRERO", "total": 42, ... },
+      ... (12 meses siempre presentes, con total:0 si no hay datos)
+    ]
+  }
+
+── RESPUESTA: action=piezas_por_red ────────────────────────────────────────────
+
+  {
+    "success": true,
+    "periodo": { "mes": "AGOSTO", "anio": 2026 },
+    "redes": [
+      {
+        "red_social": "Instagram",
+        "total": 22,
+        "estados": [
+          { "estado": "Publicado",     "cantidad": 12 },
+          { "estado": "En elaboración","cantidad": 6  }
+        ]
+      },
+      { "red_social": "Facebook",  "total": 14, "estados": [...] },
+      { "red_social": "TikTok",    "total": 11, "estados": [...] }
+    ]
+  }
+
+── RESPUESTA: action=piezas_por_prioridad ──────────────────────────────────────
+
+  {
+    "success": true,
+    "prioridades": [
+      {
+        "prioridad": "Alta",
+        "total": 5,
+        "estados": [
+          { "estado": "En revisión", "cantidad": 3 },
+          { "estado": "Aprobado",    "cantidad": 2 }
+        ]
+      },
+      { "prioridad": "Media", "total": 32, ... },
+      { "prioridad": "Baja",  "total": 10, ... }
+    ]
+  }
+
+
+================================================================================
+  6. API DE MICROTAREAS — Sistema de tareas del equipo
+================================================================================
+
+  ENDPOINT:  https://organicos.page.gd/api/microtareas.php
+  KEY:       ?api_key=sk_org_8ef6ff5016983759f95810c5f70e582f  (misma que orgánicos)
+  MÉTODOS:   GET (listar) y POST (crear, editar, eliminar)
+  NOTA:      También acepta sesión de usuario si se usa desde el dashboard interno
+
+── TABLAS EN BD ────────────────────────────────────────────────────────────────
+
+  microtareas:
+    id, titulo, descripcion, responsable_id, proyecto_id,
+    fecha_entrega, prioridad (Alta/Media/Baja),
+    estado (Pendiente/En proceso/Completada),
+    creado_por, created_at, updated_at, deleted_at
+
+  microtareas_items: (checklist de subtareas)
+    id, microtarea_id, texto, completada (0/1), created_at
+
+── ACCIÓN: list ────────────────────────────────────────────────────────────────
+
+  GET /api/microtareas.php?action=list&api_key=KEY
+
+  FILTROS:
+    proyecto_id=1   → Solo microtareas de un proyecto específico
+
+  RESPUESTA:
+  {
+    "data": [
+      {
+        "id":               15,
+        "titulo":           "Nueva Carrera Psicologia",
+        "descripcion":      "Piezas Comunicacionales para el lanzamiento",
+        "responsable_id":   4,
+        "proyecto_id":      null,
+        "fecha_entrega":    "2026-08-31",
+        "prioridad":        "Alta",
+        "estado":           "Pendiente",
+        "creado_por":       1,
+        "created_at":       "2026-08-11 20:00:00",
+        "updated_at":       "2026-08-11 20:00:00",
+        "deleted_at":       null,
+        "responsable_nombre": "Carla Adriana Melgar",
+        "creador_nombre":     "Admin",
+        "checklist": [
+          {
+            "id":          42,
+            "microtarea_id": 15,
+            "texto":       "Post de Instagram",
+            "completada":  0,              ← 0=pendiente, 1=completada
+            "created_at":  "2026-08-11..."
+          },
+          {
+            "id":          43,
+            "texto":       "Story de presentación",
+            "completada":  1
+          }
+        ]
+      }
+    ],
+    "total": 1
+  }
+
+  ORDEN DE RESPUESTA (automático):
+    1. Alta prioridad primero (Alta → Media → Baja)
+    2. Con fecha de entrega antes que sin fecha
+    3. Fecha de entrega ascendente (los más urgentes primero)
+    4. ID descendente (los más nuevos primero, dentro del mismo grupo)
+
+── ACCIÓN: create ──────────────────────────────────────────────────────────────
+
+  POST /api/microtareas.php?action=create&api_key=KEY
+  Content-Type: application/json
+
+  BODY:
+  {
+    "titulo":        "Nueva microtarea",          ← REQUERIDO
+    "descripcion":   "Descripción opcional",
+    "responsable_id": 4,                          ← ID de usuario
+    "fecha_entrega": "2026-09-01",                ← Formato YYYY-MM-DD
+    "prioridad":     "Alta",                      ← Alta | Media | Baja
+    "estado":        "Pendiente",                 ← Pendiente | En proceso | Completada
+    "checklist": [                                ← Subtareas iniciales (opcional)
+      "Post de Instagram",                        ← Puede ser string simple
+      { "texto": "Story", "completada": 0 }       ← O objeto con estado
+    ]
+  }
+
+  RESPUESTA:
+  {
+    "success": true,
+    "data": { ...microtarea creada con todos los campos... }
+  }
+
+── ACCIÓN: update ──────────────────────────────────────────────────────────────
+
+  POST /api/microtareas.php?action=update&api_key=KEY
+  Content-Type: application/json
+
+  BODY:
+  {
+    "id":           15,           ← REQUERIDO
+    "titulo":       "Nuevo título",          ← Campos opcionales
+    "estado":       "En proceso",
+    "prioridad":    "Media",
+    "fecha_entrega": "2026-09-15",
+    "checklist": [                ← Si se envía, sincroniza todo el checklist
+      {
+        "id":        42,          ← ID existente → se actualiza
+        "texto":     "Post de Instagram (modificado)",
+        "completada": 1
+      },
+      {
+        "id":        "",          ← Sin ID → se inserta como nuevo item
+        "texto":     "Nuevo item del checklist",
+        "completada": 0
+      }
+      ← Los items que estaban en BD pero NO están en este array se ELIMINAN
+    ]
+  }
+
+  LÓGICA DE SINCRONIZACIÓN DEL CHECKLIST:
+    1. Se reciben los IDs de los items enviados → keepIds = [42]
+    2. Se eliminan de BD todos los items con microtarea_id=15 que NO están en keepIds
+    3. Se actualiza el texto/completada de los items con ID existente
+    4. Se insertan como nuevos los items sin ID
+
+── ACCIÓN: delete (soft delete) ────────────────────────────────────────────────
+
+  POST /api/microtareas.php?action=delete&api_key=KEY
+  Body: { "id": 15 }
+
+  → Marca el campo deleted_at con la fecha actual (no borra de BD)
+  → El action=list automáticamente excluye las eliminadas
+
+── ACCIÓN: add_item (agregar al checklist desde el card) ───────────────────────
+
+  POST /api/microtareas.php?action=add_item&api_key=KEY
+  Body: { "microtarea_id": 15, "texto": "Nuevo item" }
+
+  RESPUESTA:
+  {
+    "success": true,
+    "item": { "id": 44, "microtarea_id": 15, "texto": "Nuevo item", "completada": 0 }
+  }
+
+── ACCIÓN: toggle_item (marcar/desmarcar item del checklist) ───────────────────
+
+  POST /api/microtareas.php?action=toggle_item&api_key=KEY
+  Body: { "id": 42, "completada": 1 }   ← 0=desmarcar, 1=marcar
+
+── ACCIÓN: delete_item (eliminar item del checklist) ───────────────────────────
+
+  POST /api/microtareas.php?action=delete_item&api_key=KEY
+  Body: { "id": 42 }
+
+── ACCIÓN: stats ───────────────────────────────────────────────────────────────
+
+  GET /api/microtareas.php?action=stats&api_key=KEY
+
+  RESPUESTA:
+  {
+    "success": true,
+    "stats": {
+      "Pendiente":  { "total": 3, "Alta": 1, "Media": 2, "Baja": 0 },
+      "En proceso": { "total": 1, "Alta": 0, "Media": 1, "Baja": 0 },
+      "Completada": { "total": 5, "Alta": 2, "Media": 2, "Baja": 1 }
+    }
+  }
+
+── VISTA KANBAN (cómo se usa en el dashboard) ──────────────────────────────────
+
+  El frontend toma el array "data" de action=list y lo divide en 3 columnas:
+    • Columna PENDIENTE:  items donde estado === "Pendiente"
+    • Columna EN PROCESO: items donde estado === "En proceso"
+    • Columna COMPLETADA: items donde estado === "Completada"
+
+  La barra de progreso de cada card se calcula:
+    progreso = (checklist.filter(i => i.completada == 1).length / checklist.length) * 100
+
+  El indicador de color de prioridad:
+    Alta  → Color rojo   (#ef4444) → borde superior de la card
+    Media → Color naranja (#f59e0b)
+    Baja  → Color azul   (#6366f1)
+
+  Los filtros de prioridad funcionan en el frontend (no requieren nueva llamada API):
+    mtState.prioFilter === 'Todas' ? mostrar todo : filtrar por prioridad
+
+
+================================================================================
+  7. SISTEMA DE PRIORIDADES
+================================================================================
+
+── PRIORIDADES DE CONTENIDOS (tabla contenidos) ────────────────────────────────
+
+  PRIORIDAD   COLOR SUGERIDO   DESCRIPCIÓN
+  ─────────   ─────────────    ─────────────────────────────────────────────
+  Alta        Rojo #ef4444     Urgente. Publicación inminente o estratégica.
+  Media       Naranja #f59e0b  Normal. La mayoría de los contenidos.
+  Baja        Gris #6b7280     Secundario. Sin urgencia temporal.
+
+  DEFAULT: Media (si no se especifica al crear)
+
+  En el campo "prioridad" de la BD el valor es VARCHAR: 'Alta', 'Media', 'Baja'
+
+── PRIORIDADES DE MICROTAREAS ──────────────────────────────────────────────────
+
+  Los mismos 3 niveles: Alta / Media / Baja
+
+  Orden de visualización en el Kanban:
+    Las microtareas se ordenan: Alta primero → Media → Baja
+    (ORDER BY CASE prioridad WHEN 'Alta' THEN 0 WHEN 'Media' THEN 1 ELSE 2 END ASC)
+
+  Dentro del mismo nivel de prioridad, se ordenan por fecha_entrega ASC
+  (los más urgentes primero, los sin fecha al final)
+
+── CÓMO USAR PRIORIDADES PARA ALERTAS ──────────────────────────────────────────
+
+  Regla de negocio sugerida:
+    • Si hay más de 3 piezas de prioridad ALTA sin publicar → alerta roja
+    • Si el porcentaje_completado de orgánicos baja de 50% → alerta naranja
+    • Si una microtarea de prioridad Alta lleva más de 3 días sin moverse → alerta
+
+  Consulta para monitoreo:
+    GET /api/stats.php?action=piezas_por_prioridad&mes=AGOSTO&api_key=KEY
+    → Revisar: data.prioridades[0] (Alta) → buscar estados != Publicado
+
+
+================================================================================
+  8. BARRA DE NOTIFICACIONES
+================================================================================
+
+── ¿QUÉ ES? ────────────────────────────────────────────────────────────────────
+
+  El dashboard interno tiene una campana 🔔 en la barra superior.
+  Al hacer clic, muestra un panel con notificaciones del sistema y un
+  mini-dashboard de KPIs del mes actual.
+
+── FUENTES DE DATOS ────────────────────────────────────────────────────────────
+
+  1. NOTIFICACIONES DE ACTIVIDAD (tabla: notificaciones)
+     → Se generan automáticamente cuando un usuario:
+        - Crea un contenido nuevo
+        - Cambia el estado de un contenido
+        - El sistema detecta contenidos listos para publicar
+
+     Tipos de notificaciones:
+        nuevo_contenido   → Alguien creó nuevo contenido
+        estado_cambio     → Un contenido cambió de estado
+        (extensible)
+
+  2. ALERTA DE PENDIENTES (endpoint: /api/contenidos.php?action=notifications)
+     → Cuenta los contenidos en estado Listo/Por publicar/Aprobado
+        con fecha <= hoy que aún no están publicados.
+     → Respuesta: { "success": true, "count": 3 }
+
+  3. KPIs DEL MES (endpoint: /api/contenidos.php?action=piece_stats)
+     → Devuelve conteos del mes actual:
+        total, en_espera, en_proceso, hechas, publicadas, by_red, by_prioridad
+
+── LÓGICA DEL CONTADOR DE LA CAMPANA ───────────────────────────────────────────
+
+  El número que aparece en el badge de la campana es:
+    (notificaciones no leídas) + (contenidos pendientes de publicar)
+
+  El frontend consulta esto periódicamente (cada X minutos) o al cargar la página.
+
+── CÓMO REPLICAR LA BARRA DE NOTIFICACIONES ────────────────────────────────────
+
+  En tu proyecto nuevo:
+
+  1. Crea la tabla notificaciones:
+     CREATE TABLE notificaciones (
+       id          INT AUTO_INCREMENT PRIMARY KEY,
+       usuario_id  INT NOT NULL,
+       tipo        VARCHAR(50),
+       mensaje     TEXT,
+       contenido_id INT DEFAULT NULL,
+       leida       TINYINT(1) DEFAULT 0,
+       created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+     )
+
+  2. En tus APIs (al cambiar estados, crear items), llama a:
+     crearNotificacion($usuario_id, 'tipo', 'mensaje', $contenido_id)
+     — o —
+     notificarRol('admin', 'tipo', 'mensaje', $contenido_id)
+
+  3. En el frontend, consulta periódicamente:
+     GET /api/notificaciones.php?action=count  → { count: N }
+     GET /api/notificaciones.php?action=list   → [ ...últimas notifs... ]
+
+  4. Al hacer clic en una notificación:
+     POST /api/notificaciones.php?action=mark_read  { id: N }
+
+
+================================================================================
+  9. FLUJOS DE INTEGRACIÓN COMPLETOS
+================================================================================
+
+── FLUJO A: Consultar orgánicos desde Python (Make/n8n equivalente) ────────────
+
+  import requests
+
+  API_KEY = "sk_org_8ef6ff5016983759f95810c5f70e582f"
+  BASE_URL = "https://organicos.page.gd/api"
+
+  # 1. Obtener orgánicos de agosto
+  r = requests.get(f"{BASE_URL}/organicos.php", params={
+      "api_key": API_KEY,
+      "mes": "AGOSTO",
+      "anio": 2026
+  })
+  data = r.json()
+
+  # 2. Recorrer personas
+  for persona_grupo in data["organicos"]:
+      persona = persona_grupo["persona_encargada"]
+      fecha   = persona_grupo["fecha"]
+      hechos  = persona_grupo["organicos_hechos"]
+      total   = persona_grupo["total"]
+      print(f"{persona} | {fecha}: {hechos}/{total} hechos")
+
+      # 3. Ver detalle de cada pieza
+      for pieza in persona_grupo["detalle"]:
+          status = "✅" if pieza["hecho"] else "⏳"
+          print(f"  {status} [{pieza['prioridad']}] {pieza['titulo']} ({pieza['red_social']})")
+
+── FLUJO B: Crear una microtarea desde Python ───────────────────────────────────
+
+  import requests, json
+
+  API_KEY = "sk_org_8ef6ff5016983759f95810c5f70e582f"
+  URL = "https://organicos.page.gd/api/microtareas.php"
+
+  # Crear microtarea con checklist
+  r = requests.post(f"{URL}?action=create&api_key={API_KEY}",
+      headers={"Content-Type": "application/json"},
+      data=json.dumps({
+          "titulo":        "Campaña Agosto - Redes",
+          "descripcion":   "Piezas para la campaña de inicio de semestre",
+          "responsable_id": 4,
+          "fecha_entrega": "2026-08-31",
+          "prioridad":     "Alta",
+          "estado":        "Pendiente",
+          "checklist": [
+              "Post de Instagram - Lunes",
+              "Story de anuncio",
+              "Reel motivacional"
+          ]
+      })
+  )
+  print(r.json())  # { "success": true, "data": { "id": 16, ... } }
+
+── FLUJO C: Actualizar estado de microtarea y su checklist ─────────────────────
+
+  import requests, json
+
+  API_KEY = "sk_org_8ef6ff5016983759f95810c5f70e582f"
+  URL = "https://organicos.page.gd/api/microtareas.php"
+
+  # Marcar como "En proceso" y actualizar checklist
+  requests.post(f"{URL}?action=update&api_key={API_KEY}",
+      headers={"Content-Type": "application/json"},
+      data=json.dumps({
+          "id":     16,
+          "estado": "En proceso",
+          "checklist": [
+              { "id": "50", "texto": "Post de Instagram - Lunes", "completada": 1 },
+              { "id": "51", "texto": "Story de anuncio",           "completada": 0 },
+              { "id": "",   "texto": "Nuevo item agregado",         "completada": 0 }
+          ]
+      })
+  )
+
+── FLUJO D: Integración con Make (Integromat) ───────────────────────────────────
+
+  Módulo: HTTP Request
+
+  Para LISTAR microtareas:
+    Method: GET
+    URL: https://organicos.page.gd/api/microtareas.php
+    Query Params:
+      action   = list
+      api_key  = sk_org_8ef6ff5016983759f95810c5f70e582f
+
+  Para CREAR microtarea:
+    Method: POST
+    URL: https://organicos.page.gd/api/microtareas.php
+    Query Params: action=create&api_key=...
+    Body Type: Raw
+    Content-Type: application/json
+    Body:
+    {
+      "titulo": "{{nombre_de_tu_campo_en_make}}",
+      "prioridad": "Alta",
+      "estado": "Pendiente",
+      "fecha_entrega": "{{fecha_formateada_YYYY-MM-DD}}"
+    }
+
+── FLUJO E: JavaScript/Fetch desde otra web ────────────────────────────────────
+
+  const API_KEY = 'sk_org_8ef6ff5016983759f95810c5f70e582f';
+  const BASE = 'https://organicos.page.gd/api';
+
+  // Listar microtareas
+  async function getMicrotareas() {
+    const res = await fetch(`${BASE}/microtareas.php?action=list&api_key=${API_KEY}`);
+    const json = await res.json();
+    return json.data; // Array de microtareas con checklist incluido
+  }
+
+  // Crear microtarea
+  async function crearMicrotarea(titulo, prioridad, checklist = []) {
+    const res = await fetch(`${BASE}/microtareas.php?action=create&api_key=${API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulo, prioridad, estado: 'Pendiente', checklist })
+    });
+    return res.json();
+  }
+
+  // Obtener orgánicos del mes actual
+  async function getOrganicos(mes) {
+    const url = `${BASE}/organicos.php?api_key=${API_KEY}&mes=${mes}&anio=2026`;
+    const res = await fetch(url);
+    return res.json();
+  }
+
+  // Obtener estadísticas del mes
+  async function getStats(mes) {
+    const url = `${BASE}/stats.php?action=resumen&mes=${mes}&api_key=sk_stats_e727955ad8a6cc63641ebd045900757d`;
+    const res = await fetch(url);
+    return res.json();
+  }
+
+
+================================================================================
+  10. CÓMO REPLICAR EN OTRO PROYECTO
+================================================================================
+
+── PASO 1: ESTRUCTURA DE ARCHIVOS MÍNIMA ──────────────────────────────────────
+
+  /
+  ├── index.html            (login)
+  ├── dashboard.html        (app principal)
+  ├── config/
+  │   ├── auth.php          (API keys, funciones de auth, permisos)
+  │   └── database.php      (conexión PDO MySQL, helpers jsonResponse/getJsonInput)
+  ├── api/
+  │   ├── contenidos.php    (CRUD del calendario)
+  │   ├── microtareas.php   (CRUD microtareas + checklist)
+  │   ├── organicos.php     (API pública de orgánicos)
+  │   ├── stats.php         (API pública de estadísticas)
+  │   └── usuarios.php      (CRUD usuarios)
+  └── assets/
+      ├── js/app.js         (toda la lógica frontend)
+      └── css/app.css       (estilos)
+
+── PASO 2: TABLAS MÍNIMAS DE BD ───────────────────────────────────────────────
+
+  En MySQL, crear:
+
+  -- Tabla de contenidos (adaptar campos a tu proyecto)
+  CREATE TABLE contenidos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    pestana_id INT NOT NULL,
+    tema TEXT NOT NULL,
+    idea TEXT,
+    fecha DATE,
+    mes VARCHAR(20),
+    anio INT DEFAULT 2026,
+    red_social VARCHAR(50),
+    estado VARCHAR(50) DEFAULT 'En elaboración',
+    prioridad VARCHAR(20) DEFAULT 'Media',
+    enviar_postproduccion TINYINT(1) DEFAULT 0,
+    postproductor_id INT DEFAULT NULL,
+    creado_por INT,
+    deleted_at DATETIME DEFAULT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  -- Tablas de apoyo
+  CREATE TABLE pestanas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100),
+    slug VARCHAR(50) UNIQUE,
+    color VARCHAR(20),
+    orden INT DEFAULT 0
+  );
+
+  CREATE TABLE usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100),
+    email VARCHAR(150) UNIQUE,
+    password VARCHAR(255),
+    rol ENUM('admin','community','postproductor') DEFAULT 'community',
+    activo TINYINT(1) DEFAULT 1
+  );
+
+  -- Las tablas de microtareas se crean automáticamente al llamar al API
+
+── PASO 3: CONFIGURAR API KEYS ────────────────────────────────────────────────
+
+  En /config/auth.php:
+    define('STATS_API_KEY',    'tu_clave_stats_generada_con_openssl');
+    define('ORGANICOS_API_KEY','tu_clave_org_generada_con_openssl');
+
+  Para generar claves seguras:
+    php -r "echo bin2hex(random_bytes(32));"
+    — o —
+    openssl rand -hex 32
+
+── PASO 4: PATRÓN DE AUTENTICACIÓN MIXTA ──────────────────────────────────────
+
+  Para que un endpoint funcione tanto con sesión como con API Key
+  (como microtareas.php), usa este patrón:
+
+  $user = null;
+  $providedKey = $_GET['api_key'] ?? '';
+  if (!$providedKey) {
+      $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+      if (preg_match('/Bearer\s+(.+)/i', $authHeader, $m)) {
+          $providedKey = $m[1];
+      }
+  }
+  if ($providedKey) {
+      if ($providedKey !== ORGANICOS_API_KEY) {
+          http_response_code(401);
+          echo json_encode(['error' => 'API Key inválida']);
+          exit;
+      }
+      $user = ['id' => 0, 'nombre' => 'API', 'rol' => 'admin'];
+  } else {
+      $user = requireAuth(); // Redirige a login si no hay sesión
+  }
+
+── PASO 5: PATRÓN DE RESPUESTA JSON ESTÁNDAR ──────────────────────────────────
+
+  En database.php, implementar estas helpers:
+
+  function jsonResponse($data, $code = 200) {
+      http_response_code($code);
+      header('Content-Type: application/json; charset=utf-8');
+      echo json_encode($data, JSON_UNESCAPED_UNICODE);
+      exit;
+  }
+
+  function getJsonInput() {
+      $input = json_decode(file_get_contents('php://input'), true);
+      return $input ?: [];
+  }
+
+  Siempre responder con:
+    Éxito:  { "success": true,  "data": ... }
+    Error:  { "success": false, "error": "mensaje" }
+
+── PASO 6: PATRÓN SOFT DELETE ─────────────────────────────────────────────────
+
+  Nunca borrar registros de la BD. Usar deleted_at:
+
+  -- Para "eliminar":
+  UPDATE microtareas SET deleted_at = NOW() WHERE id = ?
+
+  -- Para listar (excluir eliminados):
+  WHERE deleted_at IS NULL
+
+  -- Para restaurar:
+  UPDATE microtareas SET deleted_at = NULL WHERE id = ?
+
+── PASO 7: CORS PARA APIs PÚBLICAS ────────────────────────────────────────────
+
+  Al inicio de cada API pública, agregar:
+
+  header('Content-Type: application/json; charset=utf-8');
+  header('Access-Control-Allow-Origin: *');
+  header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+  header('Access-Control-Allow-Headers: Authorization, Content-Type');
+  if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+      http_response_code(200); exit;
+  }
+
+── PASO 8: PATRÓN KANBAN PARA MICROTAREAS ─────────────────────────────────────
+
+  Para implementar el Kanban en el frontend:
+
+  1. Llamar: GET /api/microtareas.php?action=list&api_key=KEY
+  2. Dividir el array por estado:
+     const pendientes  = data.filter(m => m.estado === 'Pendiente');
+     const en_proceso  = data.filter(m => m.estado === 'En proceso');
+     const completadas = data.filter(m => m.estado === 'Completada');
+  3. Para cada card, calcular progreso:
+     const pct = checklist.length > 0
+       ? Math.round(completados.length / checklist.length * 100)
+       : 0;
+  4. El botón "Añadir tarea" en el card llama a action=add_item
+  5. El checkbox en cada item llama a action=toggle_item
+  6. El botón × en cada item llama a action=delete_item
+  7. El botón editar abre un modal que llama a action=update con el checklist completo
+
+
+================================================================================
+  RESUMEN DE ENDPOINTS (Referencia Rápida)
+================================================================================
+
+  ENDPOINT                                     MÉTODO  AUTH        DESCRIPCIÓN
+  ──────────────────────────────────────────── ──────  ──────────  ───────────
+  /api/organicos.php?api_key=KEY               GET     API Key     Orgánicos por persona/fecha
+  /api/stats.php?action=resumen&api_key=KEY    GET     API Key     Resumen del mes
+  /api/stats.php?action=piezas_por_mes         GET     API Key     Evolución anual
+  /api/stats.php?action=piezas_por_red         GET     API Key     Por red social
+  /api/stats.php?action=piezas_por_prioridad   GET     API Key     Por prioridad
+  /api/microtareas.php?action=list&api_key=KEY GET     API Key     Listar microtareas
+  /api/microtareas.php?action=create           POST    API Key     Crear microtarea
+  /api/microtareas.php?action=update           POST    API Key     Actualizar + sync checklist
+  /api/microtareas.php?action=delete           POST    API Key     Soft delete microtarea
+  /api/microtareas.php?action=add_item         POST    API Key     Agregar item al checklist
+  /api/microtareas.php?action=toggle_item      POST    API Key     Marcar/desmarcar item
+  /api/microtareas.php?action=delete_item      POST    API Key     Eliminar item del checklist
+  /api/microtareas.php?action=stats            GET     API Key     Stats de microtareas
+  /api/contenidos.php?action=list              GET     Sesión      Listar contenidos
+  /api/contenidos.php?action=create            POST    Sesión      Crear contenido
+  /api/contenidos.php?action=update            POST    Sesión      Actualizar contenido
+  /api/contenidos.php?action=piece_stats       GET     Sesión      KPIs del mes (notif. panel)
+
+
+================================================================================
+  CREDENCIALES DE ACCESO ACTUALES
+================================================================================
+
+  Sistema:             UNIFRANZ Online - Calendario de Contenidos
+  URL:                 https://organicos.page.gd/
+  API Stats Key:       sk_stats_e727955ad8a6cc63641ebd045900757d
+  API Orgánicos Key:   sk_org_8ef6ff5016983759f95810c5f70e582f
+  BD MySQL Host:       sql203.infinityfree.com
+  BD Name:             if0_42131777_redes
+
+  ⚠️  GUARDAR ESTAS CREDENCIALES EN LUGAR SEGURO
+  ⚠️  No compartir las API Keys públicamente
+  ⚠️  Para un proyecto nuevo, generar nuevas claves siempre
+
+================================================================================
+  FIN DEL DOCUMENTO
+  UNIFRANZ Online — Agosto 2026
+================================================================================

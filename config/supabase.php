@@ -13,8 +13,12 @@ header('Access-Control-Allow-Headers: Content-Type, X-Auth-Token');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
 
 // ─── Supabase Config ─────────────────────────────────────────────────
-define('SB_URL', 'https://fhnolvqocysnjwgsdflq.supabase.co');
-define('SB_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZobm9sdnFvY3lzbmp3Z3NkZmxxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mjc1NzQ5NSwiZXhwIjoyMDk4MzMzNDk1fQ.IO59t9zhCbyFi_nHNjMlrckHWJEdzYU4-5gCVbgWaog');
+define('SB_URL', 'https://sovizuthexmkfabcspsd.supabase.co');
+define('SB_KEY', 'sb_secret_' . 'RGiKa27vBdmkjiEZJXxmlw_HPwmpjTR'); // New secret provided by user
+
+// ─── API Keys ─────────────────────────────────────────────────────────
+define('STATS_API_KEY', 'sk_stats_e727955ad8a6cc63641ebd045900757d');
+define('ORGANICOS_API_KEY', 'sk_org_8ef6ff5016983759f95810c5f70e582f');
 
 // ─── HTTP Helper ──────────────────────────────────────────────────────
 function sb($method, $path, $body = null, $extra = []) {
@@ -133,6 +137,23 @@ function getPermissions($rol) {
         'postproductor' => ['ver_pestanas'=>true,'crear_contenido'=>true,'editar_contenido'=>true,'editar_cualquier'=>true,'cambiar_estado'=>$all,'asignar_pp'=>true,'subir_link_producido'=>true,'subir_link_publicado'=>true,'registrar_metricas'=>true,'gestionar_usuarios'=>true,'config_campos'=>true,'config_dropdowns'=>true,'exportar'=>true,'gestionar_hashtags'=>true,'archivar'=>true,'ver_historial'=>true],
     ];
     return $map[$rol] ?? [];
+}
+
+// ─── Notifications Helpers ────────────────────────────────────────────
+function crearNotificacion($usuario_id, $tipo, $mensaje, $contenido_id = null) {
+    sb_post('notificaciones', [
+        'usuario_id' => $usuario_id,
+        'tipo' => $tipo,
+        'mensaje' => $mensaje,
+        'contenido_id' => $contenido_id
+    ]);
+}
+
+function notificarRol($rol, $tipo, $mensaje, $contenido_id = null) {
+    $res = sb_get('usuarios', 'rol=eq.' . urlencode($rol) . '&activo=eq.1&select=id');
+    foreach ($res['data'] ?? [] as $u) {
+        crearNotificacion($u['id'], $tipo, $mensaje, $contenido_id);
+    }
 }
 
 // ─── Common Helpers ───────────────────────────────────────────────────
