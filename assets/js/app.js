@@ -35,6 +35,8 @@ async function api(endpoint, params = {}) {
             url.searchParams.set(k, params[k]);
         }
     });
+    // Bust cache for GET requests
+    url.searchParams.set('_t', Date.now());
     const token = localStorage.getItem('auth_token');
     const headers = {};
     if (token) headers['X-Auth-Token'] = token;
