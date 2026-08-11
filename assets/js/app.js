@@ -1045,7 +1045,7 @@ function renderContentForm(data) {
         <div id="imagePreviewArea" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
             ${(data.imagenes_ref || []).map(img => `
                 <div style="position:relative; display:inline-block;">
-                    <img src="${img.url}" style="width:72px; height:72px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color); display:block;" alt="ref">
+                    <img src="${img.url}" style="width:72px; height:72px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color); display:block; cursor:pointer; transition: transform 0.2s;" alt="ref" onclick="openLightbox('${img.url}')" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                     <button onclick="deleteReferenciaVisual(${img.id})" title="Eliminar" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">×</button>
                 </div>
             `).join('')}
@@ -1209,7 +1209,7 @@ function renderContentForm(data) {
                 style="cursor:pointer; border: 2px dashed var(--border); border-radius: 8px; padding: 24px; text-align: center; transition: all 0.2s;"
                 title="Clic para subir o arrastra una captura. También puedes pegar con Ctrl+V">
                 ${capturaUrl
-                  ? `<img src="${escHtml(capturaUrl)}" class="captura-preview" id="capturaPreviewDashboard" alt="Captura" style="max-width:100%; border-radius:8px; display:block; margin:0 auto;">`
+                  ? `<img src="${escHtml(capturaUrl)}" class="captura-preview" id="capturaPreviewDashboard" alt="Captura" style="max-width:100%; border-radius:8px; display:block; margin:0 auto; cursor:pointer;" onclick="event.stopPropagation(); openLightbox('${escHtml(capturaUrl)}')">`
                   : `<div>
                       <svg viewBox="0 0 24 24" style="width:36px;height:36px;color:var(--text-muted);margin:0 auto 8px;display:block;" fill="none" stroke="currentColor" stroke-width="1.5">
                         <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
@@ -3228,7 +3228,7 @@ function uploadReferenciaVisual(file) {
         if (preview) {
             const wrapper = document.createElement('div');
             wrapper.style.cssText = 'position:relative; display:inline-block; opacity:0.6;';
-            wrapper.innerHTML = `<img src="${dataUrl}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border-color);display:block;" alt="ref">`;
+            wrapper.innerHTML = `<img src="${dataUrl}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border-color);display:block;cursor:pointer;" alt="ref" onclick="openLightbox('${dataUrl}')">`;
             preview.appendChild(wrapper);
         }
         try {
@@ -3290,7 +3290,7 @@ function readAndUploadCapturaDashboard(file, id) {
     reader.onload = async (ev) => {
         const dataUrl = ev.target.result;
         const zone = document.getElementById('capturaZoneDashboard');
-        if (zone) zone.innerHTML = `<img src="${dataUrl}" class="captura-preview" style="max-width:100%; border-radius:8px; display:block; margin:0 auto;" alt="captura">`;
+        if (zone) zone.innerHTML = `<img src="${dataUrl}" class="captura-preview" style="max-width:100%; border-radius:8px; display:block; margin:0 auto; cursor:pointer;" alt="captura" onclick="event.stopPropagation(); openLightbox('${dataUrl}')">`;
         await saveCapturaDashboard(id, dataUrl);
     };
     reader.readAsDataURL(file);
@@ -4156,3 +4156,63 @@ async function approveXLSImport() {
 
 // Alias for post-import reload
 function loadData() { loadContents(); }
+
+// ── Lightbox Image Viewer ─────────────────────────────────────────────
+window.openLightbox = function(url) {
+    const existing = document.getElementById('appLightbox');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'appLightbox';
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
+        z-index: 999999; display: flex; align-items: center; justify-content: center;
+        opacity: 0; transition: opacity 0.3s ease; cursor: pointer;
+    `;
+    
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.cssText = `
+        max-width: 90vw; max-height: 90vh; border-radius: 8px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    `;
+
+    const closeBtn = document.createElement('div');
+    closeBtn.innerHTML = '×';
+    closeBtn.style.cssText = `
+        position: absolute; top: 24px; right: 24px;
+        color: white; font-size: 40px; line-height: 1;
+        cursor: pointer; opacity: 0.7; transition: opacity 0.2s;
+    `;
+    closeBtn.onmouseover = () => closeBtn.style.opacity = '1';
+    closeBtn.onmouseout = () => closeBtn.style.opacity = '0.7';
+
+    overlay.appendChild(img);
+    overlay.appendChild(closeBtn);
+    document.body.appendChild(overlay);
+
+    // Trigger reflow for animation
+    void overlay.offsetWidth;
+    overlay.style.opacity = '1';
+    img.style.transform = 'scale(1)';
+
+    const closeLightbox = () => {
+        overlay.style.opacity = '0';
+        img.style.transform = 'scale(0.95)';
+        setTimeout(() => overlay.remove(), 300);
+    };
+
+    overlay.onclick = (e) => {
+        if (e.target !== img) closeLightbox();
+    };
+    
+    const escListener = (e) => {
+        if (e.key === 'Escape') {
+            closeLightbox();
+            document.removeEventListener('keydown', escListener);
+        }
+    };
+    document.addEventListener('keydown', escListener);
+};
