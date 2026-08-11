@@ -87,7 +87,7 @@ switch ($action) {
         $c['captura'] = null;
         $c['imagenes_ref'] = [];
         foreach (($imagenes['data'] ?? []) as $img) {
-            $url = sb_storage_url('imagenes', $img['filename']);
+            $url = $img['ruta'] ?? '';
             if ($img['tipo'] === 'captura_post') { $c['captura'] = $url; }
             if ($img['tipo'] === 'referencia_visual') { $c['imagenes_ref'][] = ['id' => $img['id'], 'url' => $url]; }
         }

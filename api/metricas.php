@@ -34,12 +34,15 @@ switch ($action) {
 
         // Remove existing captura_post for this content
         sb_delete('contenido_imagenes', 'contenido_id=eq.' . $cid . '&tipo=eq.captura_post');
-        sb_post('contenido_imagenes', [
-            'contenido_id' => $cid,
-            'tipo'         => 'captura_post',
-            'filename'     => $uploaded['path'],
-            'subido_por'   => $user['id'],
+        $res = sb_post('contenido_imagenes', [
+            'contenido_id'   => $cid,
+            'tipo'           => 'captura_post',
+            'ruta'           => $uploaded['url'],
+            'nombre_guardado'=> $uploaded['path'],
+            'nombre_original'=> 'captura.png',
+            'tamano'         => $uploaded['size'],
         ]);
+        if (empty($res['data'])) jsonResponse(['error' => 'Error guardando en DB', 'debug' => $res], 500);
         jsonResponse(['success' => true, 'url' => $uploaded['url']]);
 
     case 'delete_captura':
@@ -47,10 +50,10 @@ switch ($action) {
         $input = getJsonInput();
         $cid   = intval($input['contenido_id'] ?? 0);
         if (!$cid) jsonResponse(['error' => 'contenido_id requerido'], 400);
-        // Get existing to delete from storage
         $existing = sb_get('contenido_imagenes', 'contenido_id=eq.' . $cid . '&tipo=eq.captura_post&limit=1');
         if (!empty($existing['data'])) {
-            sb_storage_delete('imagenes', [$existing['data'][0]['filename']]);
+            $storagePath = $existing['data'][0]['nombre_guardado'] ?? '';
+            if ($storagePath) sb_storage_delete('imagenes', [$storagePath]);
         }
         sb_delete('contenido_imagenes', 'contenido_id=eq.' . $cid . '&tipo=eq.captura_post');
         jsonResponse(['success' => true]);
@@ -66,11 +69,14 @@ switch ($action) {
         if (!$uploaded) jsonResponse(['error' => 'Error subiendo imagen a Storage'], 500);
 
         $res = sb_post('contenido_imagenes', [
-            'contenido_id' => $cid,
-            'tipo'         => 'referencia_visual',
-            'filename'     => $uploaded['path'],
-            'subido_por'   => $user['id'],
+            'contenido_id'   => $cid,
+            'tipo'           => 'referencia_visual',
+            'ruta'           => $uploaded['url'],
+            'nombre_guardado'=> $uploaded['path'],
+            'nombre_original'=> 'referencia.png',
+            'tamano'         => $uploaded['size'],
         ]);
+        if (empty($res['data'])) jsonResponse(['error' => 'Error guardando en DB', 'debug' => $res], 500);
         $newId = $res['data'][0]['id'] ?? null;
         jsonResponse(['success' => true, 'id' => $newId, 'url' => $uploaded['url']]);
 
@@ -79,10 +85,10 @@ switch ($action) {
         $input  = getJsonInput();
         $imgId  = intval($input['imagen_id'] ?? 0);
         if (!$imgId) jsonResponse(['error' => 'imagen_id requerido'], 400);
-        // Get file path to delete from storage
         $existing = sb_get('contenido_imagenes', 'id=eq.' . $imgId . '&tipo=eq.referencia_visual&limit=1');
         if (!empty($existing['data'])) {
-            sb_storage_delete('imagenes', [$existing['data'][0]['filename']]);
+            $storagePath = $existing['data'][0]['nombre_guardado'] ?? '';
+            if ($storagePath) sb_storage_delete('imagenes', [$storagePath]);
         }
         sb_delete('contenido_imagenes', 'id=eq.' . $imgId . '&tipo=eq.referencia_visual');
         jsonResponse(['success' => true]);
@@ -93,7 +99,6 @@ switch ($action) {
 
 // ─── Helper: decode base64 data URL and upload to Supabase Storage ────
 function _uploadBase64ToStorage($dataUrl, $contenidoId, $prefix = 'img') {
-    // Parse data URL: data:image/png;base64,iVBOR...
     if (!preg_match('/^data:image\/(\w+);base64,(.+)$/', $dataUrl, $m)) return null;
     $ext      = $m[1] === 'jpeg' ? 'jpg' : $m[1];
     $binary   = base64_decode($m[2]);
@@ -109,5 +114,6 @@ function _uploadBase64ToStorage($dataUrl, $contenidoId, $prefix = 'img') {
     return [
         'path' => $path,
         'url'  => sb_storage_url('imagenes', $path),
+        'size' => strlen($binary),
     ];
 }
