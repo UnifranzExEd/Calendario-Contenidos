@@ -1045,7 +1045,7 @@ function renderContentForm(data) {
         <div id="imagePreviewArea" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
             ${(data.imagenes_ref || []).map(img => `
                 <div style="position:relative; display:inline-block;">
-                    <img src="${img.data}" style="width:72px; height:72px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color); display:block;" alt="ref">
+                    <img src="${img.url}" style="width:72px; height:72px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color); display:block;" alt="ref">
                     <button onclick="deleteReferenciaVisual(${img.id})" title="Eliminar" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">×</button>
                 </div>
             `).join('')}
@@ -1198,7 +1198,7 @@ function renderContentForm(data) {
 
     // ── Captura del Post (always visible for admin/community) ──
     if (APP_PERMS.registrar_metricas || APP_USER.rol === 'admin') {
-        const capturaUrl = data.captura ? `api/uploads/${data.captura}` : '';
+        const capturaUrl = data.captura || '';
         html += `<div class="editor-section">
             <div class="editor-section-title"><svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Captura del Post</div>
             <div class="captura-zone" id="capturaZoneDashboard" 

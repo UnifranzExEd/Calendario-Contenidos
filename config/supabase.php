@@ -47,6 +47,54 @@ function sb_patch($table, $filter, $body){ return sb('PATCH',  $table . '?' . $f
 function sb_delete($table, $filter)      { return sb('DELETE', $table . '?' . $filter); }
 function sb_rpc($fn, $params = [])       { return sb('POST', str_replace('/rest/v1/', '/rest/v1/rpc/', SB_URL . '/rest/v1/rpc/' . $fn), $params); }
 
+// ─── Supabase Storage ─────────────────────────────────────────────────
+function sb_storage_upload($bucket, $path, $fileData, $contentType = 'image/png') {
+    $url = SB_URL . '/storage/v1/object/' . $bucket . '/' . $path;
+    $headers = [
+        'apikey: ' . SB_KEY,
+        'Authorization: Bearer ' . SB_KEY,
+        'Content-Type: ' . $contentType,
+        'x-upsert: true',
+    ];
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CUSTOMREQUEST  => 'POST',
+        CURLOPT_HTTPHEADER     => $headers,
+        CURLOPT_POSTFIELDS     => $fileData,
+        CURLOPT_TIMEOUT        => 30,
+    ]);
+    $res  = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return ['data' => json_decode($res, true), 'code' => $code];
+}
+
+function sb_storage_delete($bucket, $paths) {
+    $url = SB_URL . '/storage/v1/object/' . $bucket;
+    $headers = [
+        'apikey: ' . SB_KEY,
+        'Authorization: Bearer ' . SB_KEY,
+        'Content-Type: application/json',
+    ];
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CUSTOMREQUEST  => 'DELETE',
+        CURLOPT_HTTPHEADER     => $headers,
+        CURLOPT_POSTFIELDS     => json_encode(['prefixes' => $paths]),
+        CURLOPT_TIMEOUT        => 10,
+    ]);
+    $res  = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return ['data' => json_decode($res, true), 'code' => $code];
+}
+
+function sb_storage_url($bucket, $path) {
+    return SB_URL . '/storage/v1/object/public/' . $bucket . '/' . $path;
+}
+
 // ─── Auth Helpers ─────────────────────────────────────────────────────
 function getToken() {
     if (function_exists('getallheaders')) {

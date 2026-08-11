@@ -87,8 +87,9 @@ switch ($action) {
         $c['captura'] = null;
         $c['imagenes_ref'] = [];
         foreach (($imagenes['data'] ?? []) as $img) {
-            if ($img['tipo'] === 'captura_post') { $c['captura'] = $img['filename']; }
-            if ($img['tipo'] === 'referencia_visual') { $c['imagenes_ref'][] = ['id' => $img['id'], 'data' => $img['filename']]; }
+            $url = sb_storage_url('imagenes', $img['filename']);
+            if ($img['tipo'] === 'captura_post') { $c['captura'] = $url; }
+            if ($img['tipo'] === 'referencia_visual') { $c['imagenes_ref'][] = ['id' => $img['id'], 'url' => $url]; }
         }
 
         $hashtags = sb_get('contenido_hashtags', 'contenido_id=eq.' . $id);

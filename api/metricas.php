@@ -21,48 +21,93 @@ switch ($action) {
             sb_post('metricas', $body);
         }
         jsonResponse(['success' => true]);
+
     case 'save_captura':
         if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);
         $input   = getJsonInput();
         $cid     = intval($input['contenido_id'] ?? 0);
         $imgData = $input['image_data'] ?? '';
         if (!$cid || !$imgData) jsonResponse(['error' => 'Datos incompletos'], 400);
+
+        $uploaded = _uploadBase64ToStorage($imgData, $cid, 'captura');
+        if (!$uploaded) jsonResponse(['error' => 'Error subiendo imagen a Storage'], 500);
+
         // Remove existing captura_post for this content
         sb_delete('contenido_imagenes', 'contenido_id=eq.' . $cid . '&tipo=eq.captura_post');
-        // Insert new one (store base64 in filename field)
         sb_post('contenido_imagenes', [
             'contenido_id' => $cid,
             'tipo'         => 'captura_post',
-            'filename'     => $imgData,
+            'filename'     => $uploaded['path'],
+            'subido_por'   => $user['id'],
         ]);
-        jsonResponse(['success' => true]);
+        jsonResponse(['success' => true, 'url' => $uploaded['url']]);
+
     case 'delete_captura':
         if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);
         $input = getJsonInput();
         $cid   = intval($input['contenido_id'] ?? 0);
         if (!$cid) jsonResponse(['error' => 'contenido_id requerido'], 400);
+        // Get existing to delete from storage
+        $existing = sb_get('contenido_imagenes', 'contenido_id=eq.' . $cid . '&tipo=eq.captura_post&limit=1');
+        if (!empty($existing['data'])) {
+            sb_storage_delete('imagenes', [$existing['data'][0]['filename']]);
+        }
         sb_delete('contenido_imagenes', 'contenido_id=eq.' . $cid . '&tipo=eq.captura_post');
         jsonResponse(['success' => true]);
+
     case 'save_referencia_visual':
         if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);
         $input   = getJsonInput();
         $cid     = intval($input['contenido_id'] ?? 0);
         $imgData = $input['image_data'] ?? '';
         if (!$cid || !$imgData) jsonResponse(['error' => 'Datos incompletos'], 400);
+
+        $uploaded = _uploadBase64ToStorage($imgData, $cid, 'ref');
+        if (!$uploaded) jsonResponse(['error' => 'Error subiendo imagen a Storage'], 500);
+
         $res = sb_post('contenido_imagenes', [
             'contenido_id' => $cid,
             'tipo'         => 'referencia_visual',
-            'filename'     => $imgData,
+            'filename'     => $uploaded['path'],
+            'subido_por'   => $user['id'],
         ]);
         $newId = $res['data'][0]['id'] ?? null;
-        jsonResponse(['success' => true, 'id' => $newId]);
+        jsonResponse(['success' => true, 'id' => $newId, 'url' => $uploaded['url']]);
+
     case 'delete_referencia_visual':
         if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);
         $input  = getJsonInput();
         $imgId  = intval($input['imagen_id'] ?? 0);
         if (!$imgId) jsonResponse(['error' => 'imagen_id requerido'], 400);
+        // Get file path to delete from storage
+        $existing = sb_get('contenido_imagenes', 'id=eq.' . $imgId . '&tipo=eq.referencia_visual&limit=1');
+        if (!empty($existing['data'])) {
+            sb_storage_delete('imagenes', [$existing['data'][0]['filename']]);
+        }
         sb_delete('contenido_imagenes', 'id=eq.' . $imgId . '&tipo=eq.referencia_visual');
         jsonResponse(['success' => true]);
+
     default:
         jsonResponse(['error' => 'Acción no válida'], 400);
+}
+
+// ─── Helper: decode base64 data URL and upload to Supabase Storage ────
+function _uploadBase64ToStorage($dataUrl, $contenidoId, $prefix = 'img') {
+    // Parse data URL: data:image/png;base64,iVBOR...
+    if (!preg_match('/^data:image\/(\w+);base64,(.+)$/', $dataUrl, $m)) return null;
+    $ext      = $m[1] === 'jpeg' ? 'jpg' : $m[1];
+    $binary   = base64_decode($m[2]);
+    if (!$binary) return null;
+
+    $mimeMap = ['png'=>'image/png','jpg'=>'image/jpeg','gif'=>'image/gif','webp'=>'image/webp'];
+    $mime    = $mimeMap[$ext] ?? 'image/png';
+    $path    = $contenidoId . '/' . $prefix . '_' . time() . '.' . $ext;
+
+    $result = sb_storage_upload('imagenes', $path, $binary, $mime);
+    if ($result['code'] < 200 || $result['code'] >= 300) return null;
+
+    return [
+        'path' => $path,
+        'url'  => sb_storage_url('imagenes', $path),
+    ];
 }
