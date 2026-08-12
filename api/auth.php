@@ -122,13 +122,17 @@ switch ($action) {
         $stored_pass = $user['password'] ?? '';
         $pass_ok = false;
         if (!empty($stored_pass)) {
-            if (password_get_info($stored_pass)['algo']) {
+            // Check if it looks like a bcrypt hash ($2a$, $2b$, $2y$)
+            if (preg_match('/^\$2[aby]\$/', $stored_pass)) {
                 $pass_ok = password_verify($pass, $stored_pass);
+                // If verified and it's $2a$, upgrade to PHP's $2y$ format
+                if ($pass_ok && strpos($stored_pass, '$2y$') !== 0) {
+                    sb_request('PATCH', 'usuarios?id=eq.' . $user['id'], ['password' => password_hash($pass, PASSWORD_DEFAULT)]);
+                }
             } else {
                 // Plain-text comparison for initial setup; upgrade to hash
                 $pass_ok = ($pass === $stored_pass);
                 if ($pass_ok) {
-                    // Upgrade to hashed password
                     sb_request('PATCH', 'usuarios?id=eq.' . $user['id'], ['password' => password_hash($pass, PASSWORD_DEFAULT)]);
                 }
             }
