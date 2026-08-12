@@ -261,6 +261,8 @@ function setView(view) {
     });
     document.getElementById('tableView').style.display = view === 'table' ? '' : 'none';
     document.getElementById('calendarView').style.display = view === 'calendar' ? '' : 'none';
+    document.getElementById('microtareasView').style.display = 'none';
+    document.getElementById('apiView').style.display = 'none';
 
     if (view === 'calendar') renderCalendar();
     if (view === 'table') renderTable();
@@ -4293,9 +4295,123 @@ function showMicrotareasView() {
     document.getElementById('calendarView').style.display = 'none';
     document.getElementById('adminSection').style.display = 'none';
     document.getElementById('microtareasView').style.display = 'flex';
+    document.getElementById('apiView').style.display = 'none';
     
     loadMicrotareas();
 }
+
+// ══════════════════════════════════════════
+// API PLAYGROUND VIEW
+// ══════════════════════════════════════════
+const STATS_API_KEY = 'sk_stats_e727955ad8a6cc63641ebd045900757d';
+const STATS_BASE_URL = window.location.origin + '/api/stats.php';
+
+function showApiView() {
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    const btn = document.getElementById('navApiView');
+    if (btn) btn.classList.add('active');
+    document.getElementById('headerTitle').textContent = 'API DE CONSULTA';
+
+    document.getElementById('tableView').style.display     = 'none';
+    document.getElementById('calendarView').style.display  = 'none';
+    document.getElementById('adminSection').style.display  = 'none';
+    document.getElementById('microtareasView').style.display = 'none';
+    document.getElementById('apiView').style.display = 'flex';
+
+    buildApiUrl();
+    loadApiQuickStats();
+}
+
+function buildApiUrl() {
+    const action = document.getElementById('apiAction')?.value || 'resumen';
+    const mes    = document.getElementById('apiMes')?.value  || '';
+    const anio   = document.getElementById('apiAnio')?.value || '2026';
+
+    let url = `${STATS_BASE_URL}?action=${action}&api_key=${STATS_API_KEY}`;
+    if (mes)  url += `&mes=${mes}`;
+    if (anio) url += `&anio=${anio}`;
+
+    const el = document.getElementById('apiUrlDisplay');
+    if (el) el.textContent = url;
+    return url;
+}
+
+async function runApiQuery() {
+    const url = buildApiUrl();
+    const loading = document.getElementById('apiLoading');
+    const result  = document.getElementById('apiResult');
+
+    if (loading) { loading.style.display = 'flex'; }
+    result.textContent = '⏳ Cargando...';
+
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        result.textContent = JSON.stringify(data, null, 2);
+
+        // Syntax color highlight (simple)
+        result.innerHTML = result.textContent
+            .replace(/"([^"]+)":/g, '<span style="color:#a78bfa;">"$1"</span>:')
+            .replace(/: "([^"]*)"/g, ': <span style="color:#86efac;">"$1"</span>')
+            .replace(/: (\d+)/g, ': <span style="color:#fb923c;">$1</span>')
+            .replace(/: (true|false|null)/g, ': <span style="color:#60a5fa;">$1</span>');
+    } catch (err) {
+        result.textContent = '❌ Error: ' + err.message;
+    } finally {
+        if (loading) { loading.style.display = 'none'; }
+    }
+}
+
+function setApiAction(action) {
+    const sel = document.getElementById('apiAction');
+    if (sel) { sel.value = action; buildApiUrl(); }
+    runApiQuery();
+}
+
+function copyApiKey() {
+    navigator.clipboard.writeText(STATS_API_KEY).then(() => {
+        showToast('API Key copiada al portapapeles', 'success');
+    });
+}
+
+function copyApiUrl() {
+    const url = document.getElementById('apiUrlDisplay')?.textContent;
+    if (url && url !== '—') {
+        navigator.clipboard.writeText(url).then(() => showToast('URL copiada', 'success'));
+    }
+}
+
+async function loadApiQuickStats() {
+    try {
+        const now = new Date();
+        const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+        const mesActual = meses[now.getMonth()];
+        const anio = now.getFullYear();
+
+        const [resumenRes, mtRes] = await Promise.all([
+            fetch(`${STATS_BASE_URL}?action=resumen&mes=${mesActual}&anio=${anio}&api_key=${STATS_API_KEY}`).then(r => r.json()),
+            fetch(`${STATS_BASE_URL}?action=microtareas&api_key=${STATS_API_KEY}`).then(r => r.json()),
+        ]);
+
+        if (resumenRes.success) {
+            const r = resumenRes.resumen;
+            const el = document.getElementById('quickPostprod');
+            if (el) el.textContent = r.enviadas_postproduccion ?? '—';
+            const elT = document.getElementById('quickTotal');
+            if (elT) elT.textContent = r.total_piezas ?? '—';
+            const elP = document.getElementById('quickPublicadas');
+            if (elP) elP.textContent = r.publicadas ?? '—';
+        }
+        if (mtRes.success) {
+            const enProgreso = (mtRes.por_estado || []).find(e => e.estado === 'En Progreso' || e.estado === 'En progreso');
+            const elM = document.getElementById('quickMicrotareas');
+            if (elM) elM.textContent = enProgreso?.cantidad ?? mtRes.total ?? '—';
+        }
+    } catch(e) {
+        // silently fail
+    }
+}
+
 
 async function loadMicrotareas() {
     try {

@@ -93,6 +93,10 @@
                 <button class="nav-item" id="btnImportarXLS" onclick="openXLSImporter()" style="color:#22c55e;">
                     <span><svg class="svg-icon" viewBox="0 0 24 24" style="color:#22c55e;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg></span> Importar XLS
                 </button>
+                <button class="nav-item" id="navApiView" onclick="showApiView()" style="color:#a78bfa;">
+                    <span><svg class="svg-icon" viewBox="0 0 24 24" style="color:#a78bfa;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></span> API de Consulta
+                </button>
+
             </div>
         </nav>
 
@@ -198,6 +202,132 @@
 
         <!-- ADMIN SECTIONS -->
         <div id="adminSection" style="display:none;"></div>
+
+        <!-- API VIEW PANEL -->
+        <div id="apiView" style="display:none; flex:1; overflow-y:auto; padding:24px; flex-direction:column; gap:20px;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:4px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:flex;align-items:center;justify-content:center;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width:18px;height:18px;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                </div>
+                <div>
+                    <h2 style="font-size:1.1rem;font-weight:700;margin:0;">API de Consulta</h2>
+                    <p style="font-size:0.75rem;color:var(--text-muted);margin:0;">Endpoint público de solo lectura</p>
+                </div>
+                <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+                    <span style="font-size:0.7rem;background:#10b98120;color:#10b981;padding:3px 8px;border-radius:4px;font-weight:600;">● LIVE</span>
+                    <button class="btn btn-sm btn-secondary" onclick="copyApiKey()" style="font-size:0.7rem;">📋 Copiar API Key</button>
+                </div>
+            </div>
+
+            <!-- API Key info -->
+            <div style="background:#7c3aed15;border:1px solid #7c3aed40;border-radius:8px;padding:12px 16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+                <div>
+                    <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">API KEY</div>
+                    <code style="font-size:0.78rem;color:#a78bfa;font-family:monospace;">sk_stats_e727955ad8a6cc63641ebd045900757d</code>
+                </div>
+                <div style="height:28px;width:1px;background:var(--border-color);"></div>
+                <div>
+                    <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">BASE URL</div>
+                    <code style="font-size:0.72rem;color:var(--text-primary);font-family:monospace;">https://calendario-contenidos-beta.vercel.app/api/stats.php</code>
+                </div>
+            </div>
+
+            <!-- Quick stats cards -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;" id="apiQuickCards">
+                <div style="background:var(--bg-glass);border:1px solid var(--border-color);border-radius:8px;padding:14px;">
+                    <div style="font-size:0.63rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">📦 Post-Producción</div>
+                    <div style="font-size:1.9rem;font-weight:700;color:#a78bfa;" id="quickPostprod">—</div>
+                    <div style="font-size:0.68rem;color:var(--text-muted);margin-top:3px;">diseños enviados (mes actual)</div>
+                </div>
+                <div style="background:var(--bg-glass);border:1px solid var(--border-color);border-radius:8px;padding:14px;">
+                    <div style="font-size:0.63rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">✅ Microtareas</div>
+                    <div style="font-size:1.9rem;font-weight:700;color:#10b981;" id="quickMicrotareas">—</div>
+                    <div style="font-size:0.68rem;color:var(--text-muted);margin-top:3px;">en progreso actualmente</div>
+                </div>
+                <div style="background:var(--bg-glass);border:1px solid var(--border-color);border-radius:8px;padding:14px;">
+                    <div style="font-size:0.63rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">📅 Total piezas</div>
+                    <div style="font-size:1.9rem;font-weight:700;color:#f59e0b;" id="quickTotal">—</div>
+                    <div style="font-size:0.68rem;color:var(--text-muted);margin-top:3px;">en el mes actual</div>
+                </div>
+                <div style="background:var(--bg-glass);border:1px solid var(--border-color);border-radius:8px;padding:14px;">
+                    <div style="font-size:0.63rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">🚀 Publicadas</div>
+                    <div style="font-size:1.9rem;font-weight:700;color:#22c55e;" id="quickPublicadas">—</div>
+                    <div style="font-size:0.68rem;color:var(--text-muted);margin-top:3px;">este mes</div>
+                </div>
+            </div>
+
+            <!-- Playground -->
+            <div style="background:var(--bg-glass);border:1px solid var(--border-color);border-radius:10px;overflow:hidden;">
+                <div style="padding:12px 16px;border-bottom:1px solid var(--border-color);display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--bg-secondary);">
+                    <span style="font-size:0.72rem;font-weight:700;color:var(--text-muted);">🧪 Playground</span>
+                    <select id="apiAction" onchange="buildApiUrl()" style="background:var(--bg-primary);border:1px solid var(--border-color);color:var(--text-primary);padding:5px 10px;border-radius:5px;font-size:0.78rem;">
+                        <option value="resumen">resumen</option>
+                        <option value="postproduccion">postproduccion</option>
+                        <option value="microtareas">microtareas</option>
+                        <option value="piezas_por_mes">piezas_por_mes</option>
+                        <option value="piezas_por_red">piezas_por_red</option>
+                        <option value="piezas_por_tipo">piezas_por_tipo</option>
+                    </select>
+                    <select id="apiMes" onchange="buildApiUrl()" style="background:var(--bg-primary);border:1px solid var(--border-color);color:var(--text-primary);padding:5px 10px;border-radius:5px;font-size:0.78rem;">
+                        <option value="">Todos los meses</option>
+                        <option value="ENERO">ENERO</option><option value="FEBRERO">FEBRERO</option>
+                        <option value="MARZO">MARZO</option><option value="ABRIL">ABRIL</option>
+                        <option value="MAYO">MAYO</option><option value="JUNIO">JUNIO</option>
+                        <option value="JULIO">JULIO</option><option value="AGOSTO" selected>AGOSTO</option>
+                        <option value="SEPTIEMBRE">SEPTIEMBRE</option><option value="OCTUBRE">OCTUBRE</option>
+                        <option value="NOVIEMBRE">NOVIEMBRE</option><option value="DICIEMBRE">DICIEMBRE</option>
+                    </select>
+                    <select id="apiAnio" onchange="buildApiUrl()" style="background:var(--bg-primary);border:1px solid var(--border-color);color:var(--text-primary);padding:5px 10px;border-radius:5px;font-size:0.78rem;">
+                        <option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
+                    </select>
+                    <button onclick="runApiQuery()" style="background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;border:none;padding:6px 16px;border-radius:6px;font-size:0.78rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;margin-left:auto;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Ejecutar
+                    </button>
+                </div>
+                <div style="padding:8px 14px;border-bottom:1px solid var(--border-color);background:#00000030;display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:0.6rem;background:#7c3aed30;color:#a78bfa;padding:1px 6px;border-radius:3px;font-weight:700;">GET</span>
+                    <code id="apiUrlDisplay" style="font-size:0.68rem;color:#a78bfa;font-family:monospace;word-break:break-all;flex:1;">—</code>
+                    <button onclick="copyApiUrl()" title="Copiar URL" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;padding:2px 4px;font-size:0.75rem;">📋</button>
+                </div>
+                <div style="position:relative;">
+                    <div id="apiLoading" style="display:none;position:absolute;inset:0;background:#00000070;z-index:2;align-items:center;justify-content:center;">
+                        <div style="display:flex;gap:8px;align-items:center;color:white;font-size:0.85rem;background:#1a1a2e;padding:10px 18px;border-radius:8px;">⏳ Consultando API...</div>
+                    </div>
+                    <pre id="apiResult" style="margin:0;padding:16px;font-size:0.7rem;color:#94a3b8;font-family:'Fira Code',monospace;max-height:380px;overflow-y:auto;background:var(--bg-primary);line-height:1.7;white-space:pre-wrap;">← Selecciona una acción y presiona Ejecutar</pre>
+                </div>
+            </div>
+
+            <!-- Endpoint reference -->
+            <div style="background:var(--bg-glass);border:1px solid var(--border-color);border-radius:10px;padding:16px;">
+                <div style="font-size:0.8rem;font-weight:700;margin-bottom:12px;color:var(--text-primary);">📖 Endpoints disponibles</div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div onclick="setApiAction('postproduccion')" style="cursor:pointer;padding:10px 12px;border-radius:6px;background:var(--bg-secondary);border:1px solid var(--border-color);display:flex;gap:10px;align-items:flex-start;" onmouseover="this.style.borderColor='#7c3aed'" onmouseout="this.style.borderColor='var(--border-color)'">
+                        <span style="font-size:0.6rem;background:#7c3aed25;color:#a78bfa;padding:2px 6px;border-radius:3px;font-weight:700;font-family:monospace;flex-shrink:0;margin-top:2px;">GET</span>
+                        <div><code style="font-size:0.78rem;font-weight:600;color:#a78bfa;">?action=postproduccion</code><div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">Diseños marcados "Mandar a Post-Producción" con conteos por estado. Filtra por mes/año.</div></div>
+                    </div>
+                    <div onclick="setApiAction('microtareas')" style="cursor:pointer;padding:10px 12px;border-radius:6px;background:var(--bg-secondary);border:1px solid var(--border-color);display:flex;gap:10px;align-items:flex-start;" onmouseover="this.style.borderColor='#7c3aed'" onmouseout="this.style.borderColor='var(--border-color)'">
+                        <span style="font-size:0.6rem;background:#7c3aed25;color:#a78bfa;padding:2px 6px;border-radius:3px;font-weight:700;font-family:monospace;flex-shrink:0;margin-top:2px;">GET</span>
+                        <div><code style="font-size:0.78rem;font-weight:600;color:#a78bfa;">?action=microtareas</code><div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">Estado completo del tablero Kanban — por estado y prioridad con detalle de cada tarea.</div></div>
+                    </div>
+                    <div onclick="setApiAction('resumen')" style="cursor:pointer;padding:10px 12px;border-radius:6px;background:var(--bg-secondary);border:1px solid var(--border-color);display:flex;gap:10px;align-items:flex-start;" onmouseover="this.style.borderColor='#7c3aed'" onmouseout="this.style.borderColor='var(--border-color)'">
+                        <span style="font-size:0.6rem;background:#7c3aed25;color:#a78bfa;padding:2px 6px;border-radius:3px;font-weight:700;font-family:monospace;flex-shrink:0;margin-top:2px;">GET</span>
+                        <div><code style="font-size:0.78rem;font-weight:600;color:#a78bfa;">?action=resumen</code><div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">Dashboard mensual: total piezas, postproducción, prioridades, estados — ideal para widgets externos.</div></div>
+                    </div>
+                    <div onclick="setApiAction('piezas_por_mes')" style="cursor:pointer;padding:10px 12px;border-radius:6px;background:var(--bg-secondary);border:1px solid var(--border-color);display:flex;gap:10px;align-items:flex-start;" onmouseover="this.style.borderColor='#7c3aed'" onmouseout="this.style.borderColor='var(--border-color)'">
+                        <span style="font-size:0.6rem;background:#7c3aed25;color:#a78bfa;padding:2px 6px;border-radius:3px;font-weight:700;font-family:monospace;flex-shrink:0;margin-top:2px;">GET</span>
+                        <div><code style="font-size:0.78rem;font-weight:600;color:#a78bfa;">?action=piezas_por_mes&amp;anio=2026</code><div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">Evolución anual mes a mes con postproducción incluida — para gráficas Chart.js/Apex.</div></div>
+                    </div>
+                    <div onclick="setApiAction('piezas_por_red')" style="cursor:pointer;padding:10px 12px;border-radius:6px;background:var(--bg-secondary);border:1px solid var(--border-color);display:flex;gap:10px;align-items:flex-start;" onmouseover="this.style.borderColor='#7c3aed'" onmouseout="this.style.borderColor='var(--border-color)'">
+                        <span style="font-size:0.6rem;background:#7c3aed25;color:#a78bfa;padding:2px 6px;border-radius:3px;font-weight:700;font-family:monospace;flex-shrink:0;margin-top:2px;">GET</span>
+                        <div><code style="font-size:0.78rem;font-weight:600;color:#a78bfa;">?action=piezas_por_red</code><div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">Desglose por red social (Instagram, Facebook, TikTok, etc.) ordenado de mayor a menor.</div></div>
+                    </div>
+                    <div onclick="setApiAction('piezas_por_tipo')" style="cursor:pointer;padding:10px 12px;border-radius:6px;background:var(--bg-secondary);border:1px solid var(--border-color);display:flex;gap:10px;align-items:flex-start;" onmouseover="this.style.borderColor='#7c3aed'" onmouseout="this.style.borderColor='var(--border-color)'">
+                        <span style="font-size:0.6rem;background:#7c3aed25;color:#a78bfa;padding:2px 6px;border-radius:3px;font-weight:700;font-family:monospace;flex-shrink:0;margin-top:2px;">GET</span>
+                        <div><code style="font-size:0.78rem;font-weight:600;color:#a78bfa;">?action=piezas_por_tipo</code><div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">Desglose por pestaña (Orgánicos, Pagados…) con conteo de postproducción por tab.</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
     </main>
 </div>
