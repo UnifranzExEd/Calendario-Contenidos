@@ -10,9 +10,12 @@ switch ($action) {
     case 'all':
         // Two queries, manual join (more reliable than PostgREST embedding)
         $pestanas = sb_get('pestanas', 'activo=eq.1&select=id,slug,nombre,color,enlace_carpeta_base&order=orden.asc');
+        if (($pestanas['__code'] ?? $pestanas['code'] ?? 200) !== 200 || isset($pestanas['data']['message'])) {
+            jsonResponse(['error' => 'Error cache: ' . ($pestanas['data']['message'] ?? 'Desconocido')], 500);
+        }
         $slugMap  = [];
         foreach (($pestanas['data'] ?? []) as $p) {
-            if (isset($p['id'])) $slugMap[$p['id']] = $p['slug'] ?? 'default';
+            if (is_array($p) && isset($p['id'])) $slugMap[$p['id']] = $p['slug'] ?? 'default';
         }
 
         $campos  = sb_get('pestana_campos', 'visible=eq.1&order=orden.asc');

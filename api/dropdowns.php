@@ -14,9 +14,14 @@ switch ($action) {
         if ($campo) $filter = 'campo=eq.' . urlencode($campo) . '&activo=eq.1&order=orden.asc';
 
         $res     = sb_get('dropdown_opciones', $filter);
+        if (($res['__code'] ?? $res['code'] ?? 200) !== 200 || isset($res['data']['message'])) {
+            jsonResponse(['error' => 'Error en base de datos: ' . ($res['data']['message'] ?? 'Desconocido')], 500);
+        }
         $grouped = [];
         foreach (($res['data'] ?? []) as $o) {
-            $grouped[$o['campo']][] = ['id' => $o['id'], 'valor' => $o['valor'], 'color' => $o['color']];
+            if (is_array($o) && isset($o['campo'])) {
+                $grouped[$o['campo']][] = ['id' => $o['id'], 'valor' => $o['valor'], 'color' => $o['color']];
+            }
         }
         jsonResponse(['data' => $grouped]);
 

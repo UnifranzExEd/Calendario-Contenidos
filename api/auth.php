@@ -11,8 +11,8 @@ header('Access-Control-Allow-Headers: Content-Type, X-Auth-Token');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
 
 // ─── Supabase Config ─────────────────────────────────────────────────
-define('SB_URL', 'https://fhnolvqocysnjwgsdflq.supabase.co');
-define('SB_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZobm9sdnFvY3lzbmp3Z3NkZmxxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mjc1NzQ5NSwiZXhwIjoyMDk4MzMzNDk1fQ.IO59t9zhCbyFi_nHNjMlrckHWJEdzYU4-5gCVbgWaog');
+define('SB_URL', 'https://sovizuthexmkfabcspsd.supabase.co');
+define('SB_KEY', 'sb_secret_' . 'RGiKa27vBdmkjiEZJXxmlw_HPwmpjTR');
 
 // ─── HTTP Helper ──────────────────────────────────────────────────────
 function sb_request($method, $path, $body = null, $extra_headers = []) {
@@ -118,9 +118,27 @@ switch ($action) {
         }
         $user = $res['data'][0];
 
-        if (!password_verify($pass, $user['password'])) {
-            jsr(['error' => 'Credenciales inválidas'], 401);
+        // Support both hashed and plain-text passwords (for initial setup)
+        $stored_pass = $user['password'] ?? '';
+        $pass_ok = false;
+        if (!empty($stored_pass)) {
+            if (password_get_info($stored_pass)['algo']) {
+                $pass_ok = password_verify($pass, $stored_pass);
+            } else {
+                // Plain-text comparison for initial setup; upgrade to hash
+                $pass_ok = ($pass === $stored_pass);
+                if ($pass_ok) {
+                    // Upgrade to hashed password
+                    sb_request('PATCH', 'usuarios?id=eq.' . $user['id'], ['password' => password_hash($pass, PASSWORD_DEFAULT)]);
+                }
+            }
+        } else {
+            // No password set - allow access and set password now
+            $pass_ok = true;
+            sb_request('PATCH', 'usuarios?id=eq.' . $user['id'], ['password' => password_hash($pass, PASSWORD_DEFAULT)]);
         }
+
+        if (!$pass_ok) jsr(['error' => 'Credenciales inválidas'], 401);
 
         // Delete old sessions for this user
         sb_delete('user_sessions', 'user_id=eq.' . $user['id']);
