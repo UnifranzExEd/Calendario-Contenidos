@@ -51,6 +51,38 @@ function sb_patch($table, $filter, $body){ return sb('PATCH',  $table . '?' . $f
 function sb_delete($table, $filter)      { return sb('DELETE', $table . '?' . $filter); }
 function sb_rpc($fn, $params = [])       { return sb('POST', str_replace('/rest/v1/', '/rest/v1/rpc/', SB_URL . '/rest/v1/rpc/' . $fn), $params); }
 
+// ─── Parallel GET helper (cURL multi) ────────────────────────────────
+function sb_multi_get(array $queries) {
+    $headers = [
+        'apikey: ' . SB_KEY,
+        'Authorization: Bearer ' . SB_KEY,
+        'Content-Type: application/json',
+    ];
+    $mh = curl_multi_init();
+    $handles = [];
+    foreach ($queries as $key => $path) {
+        $url = SB_URL . '/rest/v1/' . ltrim($path, '/');
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_TIMEOUT        => 10,
+        ]);
+        curl_multi_add_handle($mh, $ch);
+        $handles[$key] = $ch;
+    }
+    $active = null;
+    do { curl_multi_exec($mh, $active); } while ($active);
+    $results = [];
+    foreach ($handles as $key => $ch) {
+        $body = curl_multi_getcontent($ch);
+        $results[$key] = ['data' => json_decode($body, true), 'code' => curl_getinfo($ch, CURLINFO_HTTP_CODE)];
+        curl_multi_remove_handle($mh, $ch);
+    }
+    curl_multi_close($mh);
+    return $results;
+}
+
 // ─── Supabase Storage ─────────────────────────────────────────────────
 function sb_storage_upload($bucket, $path, $fileData, $contentType = 'image/png') {
     $url = SB_URL . '/storage/v1/object/' . $bucket . '/' . $path;

@@ -53,50 +53,55 @@ switch ($action) {
         $id = intval($_GET['id'] ?? 0);
         if (!$id) jsonResponse(['error' => 'ID requerido'], 400);
 
-        // Manual joins since Supabase doesn't have Foreign Keys set up
+        // Fetch main content first, then all related data in parallel
         $res = sb_get('contenidos', 'id=eq.' . $id . '&limit=1');
         $c   = $res['data'][0] ?? null;
         if (!$c) jsonResponse(['error' => 'No encontrado'], 404);
 
-        // Fetch related data
-        $pestanas = sb_get('pestanas', 'id=eq.' . intval($c['pestana_id']));
-        $pst = $pestanas['data'][0] ?? [];
+        // Fire all related queries IN PARALLEL (much faster)
+        $related = sb_multi_get([
+            'pestana'  => 'pestanas?id=eq.'          . intval($c['pestana_id'] ?? 0),
+            'detalle'  => 'contenido_detalle?contenido_id=eq.' . $id,
+            'slides'   => 'contenido_slides?contenido_id=eq.'  . $id . '&order=orden.asc',
+            'metricas' => 'metricas?contenido_id=eq.'          . $id . '&limit=1',
+            'historial'=> 'historial_estado?contenido_id=eq.'  . $id . '&order=created_at.desc&limit=20',
+            'imagenes' => 'contenido_imagenes?contenido_id=eq.' . $id,
+        ]);
+
+        // Hydrate pestana
+        $pst = $related['pestana']['data'][0] ?? [];
         $c['pestana_slug']   = $pst['slug']   ?? '';
         $c['pestana_nombre'] = $pst['nombre'] ?? '';
         $c['pestana_color']  = $pst['color']  ?? '';
 
-        $detalle = sb_get('contenido_detalle', 'contenido_id=eq.' . $id);
+        // Hydrate detalle
         $flatDetalle = [];
-        foreach (($detalle['data'] ?? []) as $row) {
-            if (isset($row['campo'])) {
-                $flatDetalle[$row['campo']] = $row['valor'] ?? '';
-            }
+        foreach (($related['detalle']['data'] ?? []) as $row) {
+            if (isset($row['campo'])) $flatDetalle[$row['campo']] = $row['valor'] ?? '';
         }
         $c['detalle'] = $flatDetalle;
 
-        $slides = sb_get('contenido_slides', 'contenido_id=eq.' . $id);
-        $c['slides'] = $slides['data'] ?? [];
+        // Hydrate slides
+        $c['slides'] = $related['slides']['data'] ?? [];
 
-        $metricas = sb_get('metricas', 'contenido_id=eq.' . $id);
-        $c['metricas'] = $metricas['data'][0] ?? null;
+        // Hydrate metricas
+        $c['metricas'] = $related['metricas']['data'][0] ?? null;
 
-        $historial = sb_get('historial_estado', 'contenido_id=eq.' . $id . '&order=created_at.desc&limit=20');
-        $c['historial'] = $historial['data'] ?? [];
+        // Hydrate historial
+        $c['historial'] = $related['historial']['data'] ?? [];
 
-        $imagenes = sb_get('contenido_imagenes', 'contenido_id=eq.' . $id);
+        // Hydrate imagenes
         $c['captura'] = null;
         $c['imagenes_ref'] = [];
-        foreach (($imagenes['data'] ?? []) as $img) {
+        foreach (($related['imagenes']['data'] ?? []) as $img) {
             $url = $img['ruta'] ?? '';
-            if ($img['tipo'] === 'captura_post') { $c['captura'] = $url; }
-            if ($img['tipo'] === 'referencia_visual') { $c['imagenes_ref'][] = ['id' => $img['id'], 'url' => $url]; }
+            if ($img['tipo'] === 'captura_post')       { $c['captura'] = $url; }
+            if ($img['tipo'] === 'referencia_visual')  { $c['imagenes_ref'][] = ['id' => $img['id'], 'url' => $url]; }
         }
 
-        $hashtags = sb_get('contenido_hashtags', 'contenido_id=eq.' . $id);
-        $c['hashtags'] = []; // we can skip full hashtag hydration if not strictly needed or do it manually
-
-
+        $c['hashtags'] = [];
         jsonResponse(['data' => $c]);
+
 
 
     case 'create':
