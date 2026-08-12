@@ -23,7 +23,8 @@ switch ($action) {
                 $grouped[$o['campo']][] = ['id' => $o['id'], 'valor' => $o['valor'], 'color' => $o['color']];
             }
         }
-        jsonResponse(['data' => $grouped]);
+        jsonResponse(['data' => $grouped], 200, true);
+
 
     case 'create':
         if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);

@@ -42,11 +42,11 @@ switch ($action) {
         } else {
             $res = sb_get('pestana_campos', 'visible=eq.1&order=orden.asc');
         }
-        jsonResponse(['data' => is_array($res['data']) ? $res['data'] : []]);
+        jsonResponse(['data' => is_array($res['data']) ? $res['data'] : []], 200, true);
 
     case 'pestanas':
         $res = sb_get('pestanas', 'activo=eq.1&order=orden.asc');
-        jsonResponse(['data' => is_array($res['data']) ? $res['data'] : []]);
+        jsonResponse(['data' => is_array($res['data']) ? $res['data'] : []], 200, true);
 
     case 'update':
         if ($method !== 'POST') jsonResponse(['error' => 'Método no permitido'], 405);

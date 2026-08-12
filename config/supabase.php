@@ -36,6 +36,8 @@ function sb($method, $path, $body = null, $extra = []) {
         CURLOPT_CUSTOMREQUEST  => $method,
         CURLOPT_HTTPHEADER     => $headers,
         CURLOPT_TIMEOUT        => 10,
+        CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_2TLS, // HTTP/2 — faster
+        CURLOPT_TCP_FASTOPEN   => true,
     ]);
     if ($body !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
 
@@ -189,8 +191,16 @@ function notificarRol($rol, $tipo, $mensaje, $contenido_id = null) {
 }
 
 // ─── Common Helpers ───────────────────────────────────────────────────
-function jsonResponse($data, $code = 200) {
+// Cache TTL in seconds for static endpoints
+define('CACHE_TTL_STATIC', 120); // 2 minutes
+
+function jsonResponse($data, $code = 200, $cache = false) {
     http_response_code($code);
+    if ($cache && $_SERVER['REQUEST_METHOD'] === 'GET' && $code === 200) {
+        header('Cache-Control: private, max-age=' . CACHE_TTL_STATIC);
+    } else {
+        header('Cache-Control: no-store');
+    }
     echo json_encode($data, JSON_UNESCAPED_UNICODE);
     exit;
 }

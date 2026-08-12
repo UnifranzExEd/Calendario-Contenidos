@@ -124,11 +124,12 @@ if (document.readyState === 'loading') {
 
 async function initApp() {
     try {
-        // Load initial data in parallel
-        const [pestanasRes, camposRes, dropdownsRes] = await Promise.all([
+        // Load ALL initial data in parallel — single round-trip burst
+        const [pestanasRes, camposRes, dropdownsRes, ppRes] = await Promise.all([
             api('campos.php', { action: 'pestanas' }),
             api('campos.php', { action: 'all' }),
             api('dropdowns.php', { action: 'all' }),
+            api('usuarios.php', { action: 'postproductores' }).catch(() => ({ data: [] })),
         ]);
 
         state.pestanas = pestanasRes.data;
@@ -139,29 +140,23 @@ async function initApp() {
             color: '#ef5350',
             enlace_carpeta_base: ''
         });
-        state.campos = camposRes.data;
-        state.dropdowns = dropdownsRes.data;
-
-        // Load postproductores
-        try {
-            const ppRes = await api('usuarios.php', { action: 'postproductores' });
-            state.postproductores = ppRes.data;
-        } catch (e) { state.postproductores = []; }
+        state.campos        = camposRes.data;
+        state.dropdowns     = dropdownsRes.data;
+        state.postproductores = ppRes.data || [];
 
         renderTabsNavigation();
         renderTabsBar();
 
-        // Restore last view from localStorage
-        const savedTab = localStorage.getItem('uf_lastTab');
+        // Restore last view/tab/month from localStorage
+        const savedTab   = localStorage.getItem('uf_lastTab');
         const savedMonth = localStorage.getItem('uf_lastMonth');
-        const savedView = localStorage.getItem('uf_lastView');
-        
+        const savedView  = localStorage.getItem('uf_lastView');
+
         if (savedView === 'calendar') setView('calendar');
         const tabToUse = (savedTab && state.pestanas.find(p => p.slug === savedTab)) ? savedTab : state.currentTab;
         setActiveTab(tabToUse);
         checkNotifications();
 
-        // Use saved month or auto-detect current
         const meses = ['','ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
         const monthToUse = savedMonth || meses[new Date().getMonth() + 1];
         selectMonth(monthToUse);
