@@ -4,3 +4,8 @@ if0_42131777_redes.sql
 .vercel
 .env*
 accesos_backup.txt
+migrate_data.sh
+migration_dump/
+fix_database.sql
+fix_columns.sql
+schema_updates.sql

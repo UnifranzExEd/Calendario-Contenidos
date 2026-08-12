@@ -273,7 +273,7 @@ function setView(view) {
 // ══════════════════════════════════════════
 async function checkNotifications() {
     try {
-        const res = await api('notificaciones.php', { action: 'count' });
+        const res = await api('external.php?api=notificaciones', { action: 'count' });
         const count = (res && res.count) ? parseInt(res.count) : 0;
         const badge = document.getElementById('notifBadge');
         const bell = document.getElementById('notifBtn');
@@ -4237,7 +4237,7 @@ async function fetchNotificationsList() {
     const listEl = document.getElementById('notifList');
     listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Cargando...</div>';
     try {
-        const res = await api('notificaciones.php', { action: 'list' });
+        const res = await api('external.php?api=notificaciones', { action: 'list' });
         const notifs = res.data || [];
         if (notifs.length === 0) {
             listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">No hay notificaciones.</div>';
@@ -4264,7 +4264,7 @@ async function fetchNotificationsList() {
 
 async function markNotifRead(id) {
     try {
-        await apiPost('notificaciones.php?action=read', { id });
+        await apiPost('external.php?api=notificaciones&action=read', { id });
         checkNotifications();
         fetchNotificationsList();
     } catch(err) { console.error(err); }
@@ -4272,7 +4272,7 @@ async function markNotifRead(id) {
 
 async function markAllRead() {
     try {
-        await apiPost('notificaciones.php?action=read', {});
+        await apiPost('external.php?api=notificaciones&action=read', {});
         checkNotifications();
         toggleNotifications();
     } catch(err) { console.error(err); }
