@@ -36,8 +36,6 @@ function sb($method, $path, $body = null, $extra = []) {
         CURLOPT_CUSTOMREQUEST  => $method,
         CURLOPT_HTTPHEADER     => $headers,
         CURLOPT_TIMEOUT        => 10,
-        CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_2TLS, // HTTP/2 — faster
-        CURLOPT_TCP_FASTOPEN   => true,
     ]);
     if ($body !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
 
