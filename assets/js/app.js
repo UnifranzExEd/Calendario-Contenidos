@@ -866,6 +866,12 @@ async function openEditModal(id) {
 
 function renderContentForm(data) {
     const isEdit = !!(data && data.id);
+    const body = document.getElementById('modalBody');
+    if (APP_USER.rol === 'postproductor') {
+        body.classList.add('simple-mode-active');
+    } else {
+        body.classList.remove('simple-mode-active');
+    }
     const isPP = false;
     const canEdit = true;
     
@@ -2685,19 +2691,7 @@ function openModal(id) {
     document.body.style.overflow = 'hidden';
 }
 
-function toggleSimpleMode() {
-    const isSimple = document.getElementById('simpleModeToggle').checked;
-    const body = document.getElementById('modalBody');
-    if (isSimple) {
-        body.classList.add('simple-mode-active');
-    } else {
-        body.classList.remove('simple-mode-active');
-    }
-}
-
 function closeModal() {
-    const simpleToggle = document.getElementById('simpleModeToggle');
-    if (simpleToggle) simpleToggle.checked = false;
     const body = document.getElementById('modalBody');
     if (body) body.classList.remove('simple-mode-active');
 
