@@ -94,6 +94,20 @@ $action  = $_GET['action']  ?? 'resumen';
 $mes     = strtoupper(trim($_GET['mes']    ?? ''));
 $anio    = intval($_GET['anio']   ?? date('Y'));
 $pestana = strtolower(trim($_GET['pestana'] ?? ''));
+$responsable = strtolower(trim($_GET['responsable'] ?? ''));
+
+$responsable_filter_contenidos = '';
+$responsable_filter_microtareas = '';
+if ($responsable) {
+    $users = sb_get('usuarios', 'nombre=ilike.*' . urlencode($responsable) . '*&select=id');
+    $ids = array_column($users, 'id');
+    if (empty($ids)) {
+        $ids = [-1]; // Si no hay match, forzamos un ID inexistente
+    }
+    $ids_str = implode(',', $ids);
+    $responsable_filter_contenidos = 'or=(creado_por.in.(' . $ids_str . '),postproductor_id.in.(' . $ids_str . '))';
+    $responsable_filter_microtareas = 'responsable_id=in.(' . $ids_str . ')';
+}
 
 // Resolve pestana slug → id if given
 $pestana_id = null;
@@ -107,9 +121,11 @@ $MESES_ORDEN = ['ENERO'=>1,'FEBRERO'=>2,'MARZO'=>3,'ABRIL'=>4,'MAYO'=>5,'JUNIO'=
 
 // Build base filter for contenidos
 function base_filter($mes, $anio, $pestana_id, $extra = '') {
+    global $responsable_filter_contenidos;
     $f = ['deleted_at=is.null', 'anio=eq.' . $anio];
     if ($mes)        $f[] = 'mes=eq.' . urlencode($mes);
     if ($pestana_id) $f[] = 'pestana_id=eq.' . $pestana_id;
+    if ($responsable_filter_contenidos) $f[] = $responsable_filter_contenidos;
     if ($extra)      $f[] = $extra;
     return implode('&', $f);
 }
@@ -122,11 +138,12 @@ switch ($action) {
         $mesActual = $mes ?: strtoupper(['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
             'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'][date('n')-1]);
 
+        global $responsable_filter_microtareas;
         $data = sb_multi([
             'contenidos'    => 'contenidos?select=estado,prioridad&' . base_filter($mesActual, $anio, $pestana_id),
             'postprod'      => 'contenidos?select=id,tema,estado,red_social,fecha,pestana_id&' 
                              . base_filter($mesActual, $anio, $pestana_id, 'enviar_postproduccion=eq.1'),
-            'microtareas'   => 'microtareas?select=estado,prioridad&deleted_at=is.null',
+            'microtareas'   => 'microtareas?select=estado,prioridad&deleted_at=is.null' . ($responsable_filter_microtareas ? '&' . $responsable_filter_microtareas : ''),
         ]);
 
         $contenidos   = $data['contenidos'];
@@ -226,7 +243,11 @@ switch ($action) {
 
     // ── MICROTAREAS ───────────────────────────────────────────────────
     case 'microtareas':
+        global $responsable_filter_microtareas;
         $filter = 'deleted_at=is.null&select=id,titulo,descripcion,estado,prioridad,fecha_entrega,responsable_id&order=created_at.desc';
+        if ($responsable_filter_microtareas) {
+            $filter .= '&' . $responsable_filter_microtareas;
+        }
         if ($estado_filter = strtolower($_GET['estado'] ?? '')) {
             $filter .= '&estado=ilike.' . urlencode($estado_filter);
         }
@@ -251,8 +272,10 @@ switch ($action) {
 
     // ── PIEZAS POR MES ────────────────────────────────────────────────
     case 'piezas_por_mes':
+        global $responsable_filter_contenidos;
         $all = sb_get('contenidos', 'deleted_at=is.null&anio=eq.' . $anio
             . ($pestana_id ? '&pestana_id=eq.' . $pestana_id : '')
+            . ($responsable_filter_contenidos ? '&' . $responsable_filter_contenidos : '')
             . '&select=mes,estado,enviar_postproduccion');
 
         $meses_data = [];

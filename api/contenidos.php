@@ -372,8 +372,8 @@ switch ($action) {
                 $esPauta     = !empty($row['es_pauta']);
                 $slides      = $row['slides']        ?? [];
 
-                if (!$fecha || !$codigoPieza) {
-                    $results['errors'][] = "Fila #{$idx}: sin fecha o código de pieza";
+                if (!$fecha) {
+                    $results['errors'][] = "Fila $idx: Fecha faltante";
                     continue;
                 }
 
@@ -392,18 +392,18 @@ switch ($action) {
                     'anio'             => intval(date('Y', strtotime($fecha))),
                     'semana'           => $t($row['semana']          ?? null, 50),
                     'formato'          => $t($row['serie_editorial'] ?? null, 50),
-                    'tema'             => $codigoPieza,
+                    'tema'             => $t($row['headline']        ?? null, 255), // Guardar el headline como Tema/Título
                     'idea'             => $row['conversacion']    ?? null,
                     'pilar'            => $t($row['tipo_pieza']      ?? null, 50),
                     'red_social'       => $t($row['red']             ?? null, 50),
-                    'horario'          => $t($row['headline']        ?? null, 50),
+                    'horario'          => null, // Headline ya no sobreescribe horario
                     'observaciones'    => $row['insight']         ?? null,
                     'enlace_contenido' => $row['url_destino']     ?? null,
                     'estado'           => 'En elaboración',
                     'creado_por'       => $user['id'],
                 ];
 
-                $key = $fecha . '|' . trim($codigoPieza);
+                $key = $fecha . '|' . trim($row['headline'] ?? '');
 
                 if (isset($existMap[$key])) {
                     $existente = $existMap[$key];
