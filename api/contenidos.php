@@ -162,8 +162,12 @@ switch ($action) {
             sb_post('contenido_detalle', $detBody);
         }
         // Slides
+        $slidesBatch = [];
         foreach (($input['slides'] ?? []) as $i => $slide) {
-            sb_post('contenido_slides', ['contenido_id' => $cid, 'orden' => $i+1, 'texto' => $slide['texto'] ?? '', 'notas' => $slide['notas'] ?? null]);
+            $slidesBatch[] = ['contenido_id' => $cid, 'orden' => $i+1, 'texto' => $slide['texto'] ?? '', 'notas' => $slide['notas'] ?? null];
+        }
+        if (!empty($slidesBatch)) {
+            sb_post('contenido_slides', $slidesBatch);
         }
         // History
         sb_post('historial_estado', ['contenido_id' => $cid, 'estado_nuevo' => $body['estado'], 'usuario_id' => $user['id'], 'comentario' => 'Contenido creado']);
@@ -217,8 +221,12 @@ switch ($action) {
         // Slides
         if (isset($input['slides'])) {
             sb_delete('contenido_slides', 'contenido_id=eq.' . $id);
+            $slidesBatch = [];
             foreach ($input['slides'] as $i => $slide) {
-                sb_post('contenido_slides', ['contenido_id' => $id, 'orden' => $i+1, 'texto' => $slide['texto'] ?? '', 'notas' => $slide['notas'] ?? null]);
+                $slidesBatch[] = ['contenido_id' => $id, 'orden' => $i+1, 'texto' => $slide['texto'] ?? '', 'notas' => $slide['notas'] ?? null];
+            }
+            if (!empty($slidesBatch)) {
+                sb_post('contenido_slides', $slidesBatch);
             }
         }
         jsonResponse(['success' => true]);
@@ -420,9 +428,11 @@ switch ($action) {
                         sb_patch('contenidos', 'id=eq.'.$existId, $upd);
                         if (!empty($slides)) {
                             sb_delete('contenido_slides', 'contenido_id=eq.'.$existId);
+                            $slidesBatch = [];
                             foreach ($slides as $si => $slide) {
-                                sb_post('contenido_slides', ['contenido_id'=>$existId,'orden'=>$si+1,'texto'=>$slide['texto']??'','notas'=>$slide['notas']??null]);
+                                $slidesBatch[] = ['contenido_id'=>$existId,'orden'=>$si+1,'texto'=>$slide['texto']??'','notas'=>$slide['notas']??null];
                             }
+                            if (!empty($slidesBatch)) sb_post('contenido_slides', $slidesBatch);
                         }
                         sb_delete('contenido_detalle', 'contenido_id=eq.'.$existId);
                         foreach (buildDetalleXLS($existId, $row, $tipoDist) as $d) sb_post('contenido_detalle', $d);
@@ -438,9 +448,11 @@ switch ($action) {
                         $results['errors'][] = "Fila #{$idx} ({$codigoPieza}): " . $sbErr;
                         continue;
                     }
+                    $slidesBatch = [];
                     foreach ($slides as $si => $slide) {
-                        sb_post('contenido_slides', ['contenido_id'=>$cid,'orden'=>$si+1,'texto'=>$slide['texto']??'','notas'=>$slide['notas']??null]);
+                        $slidesBatch[] = ['contenido_id'=>$cid,'orden'=>$si+1,'texto'=>$slide['texto']??'','notas'=>$slide['notas']??null];
                     }
+                    if (!empty($slidesBatch)) sb_post('contenido_slides', $slidesBatch);
                     foreach (buildDetalleXLS($cid, $row, $tipoDist) as $d) sb_post('contenido_detalle', $d);
                     sb_post('historial_estado', ['contenido_id'=>$cid,'estado_nuevo'=>'En elaboración','usuario_id'=>$user['id'],'comentario'=>'Importado desde Planner 2.0 XLS']);
                     $results['created']++;
