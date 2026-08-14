@@ -74,10 +74,10 @@ function getSocialSvg(red) {
     
     let svgs = [];
     
-    if (containsStr('facebook') || hasToken('fb')) {
+    if (containsStr('facebook') || hasToken('fb') || containsStr('meta')) {
         svgs.push(`<svg class="social-logo" style="margin-right:4px; color:#1877F2; width:12px; height:12px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15.82 29.54" fill="currentColor" stroke="none"><path d="M10.47,29.54V16.61h4.31l.82-5.34H10.47V7.8a2.68,2.68,0,0,1,3-2.89h2.33V.36A28.6,28.6,0,0,0,11.68,0c-4.22,0-7,2.56-7,7.19v4.08H0v5.34H4.7V29.54Z"/></svg>`);
     }
-    if (containsStr('instagram') || hasToken('ig')) {
+    if (containsStr('instagram') || hasToken('ig') || containsStr('meta')) {
         svgs.push(`<svg class="social-logo" style="margin-right:4px; color:#E1306C; width:12px; height:12px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 27.52 27.52" fill="currentColor" stroke="none"><path d="M21.05,4.91a1.62,1.62,0,1,0,0,3.23,1.62,1.62,0,0,0,0-3.23Z"/><path d="M13.87,7a6.78,6.78,0,1,0,6.78,6.78A6.78,6.78,0,0,0,13.87,7Zm0,11.12a4.34,4.34,0,1,1,4.34-4.34A4.35,4.35,0,0,1,13.87,18.1Z"/><path d="M19.25,27.52h-11A8.28,8.28,0,0,1,0,19.25v-11A8.28,8.28,0,0,1,8.27,0h11a8.28,8.28,0,0,1,8.27,8.27v11A8.28,8.28,0,0,1,19.25,27.52ZM8.27,2.59A5.69,5.69,0,0,0,2.59,8.27v11a5.69,5.69,0,0,0,5.68,5.68h11a5.69,5.69,0,0,0,5.68-5.68v-11a5.69,5.69,0,0,0-5.68-5.68Z"/></svg>`);
     }
     if (containsStr('tiktok') || hasToken('tt') || containsStr('tik tok')) {
@@ -4576,7 +4576,9 @@ function addMicrotareaChecklistItem(item = null) {
 }
 
 function closeMicrotareaModal() {
-    closeModal('microtareaModal');
+    const el = document.getElementById('microtareaModal');
+    if (el) el.classList.remove('active');
+    document.body.style.overflow = '';
 }
 
 async function saveMicrotarea() {
