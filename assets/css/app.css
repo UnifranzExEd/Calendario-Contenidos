@@ -2762,3 +2762,8 @@ textarea.form-control {
     align-items: center;
     gap: 4px;
 }
+
+/* Simple Mode Hide Logic */
+.simple-mode-active [data-field]:not([data-field="tema"]):not([data-field="estado"]):not([data-field="fecha"]):not([data-field="enlace_contenido"]):not([data-field="enlace_diseno"]):not([data-field="observaciones"]):not([data-field="postproductor_id"]) {
+    display: none !important;
+}

@@ -922,13 +922,13 @@ function renderContentForm(data) {
         const disabled = '';
         
         if (campo.nombre_campo === 'tema') {
-            return `<div class="form-group" style="grid-column: 1 / -1;">
+            return `<div class="form-group" data-field="${campo.nombre_campo}" style="grid-column: 1 / -1;">
                 <label>TÍTULO</label>
                 <input type="text" class="form-control" id="form_${campo.nombre_campo}" spellcheck="true" lang="es" value="${escHtml(val)}" ${disabled}>
             </div>`;
         } else if (campo.tipo_campo === 'dropdown' && campo.dropdown_grupo) {
             const opciones = state.dropdowns[campo.dropdown_grupo] || [];
-            return `<div class="form-group">
+            return `<div class="form-group" data-field="${campo.nombre_campo}">
                 <label>${escHtml(campo.nombre_display)}</label>
                 <select class="form-control" id="form_${campo.nombre_campo}" ${disabled}>
                     <option value="">&#8212; Seleccionar &#8212;</option>
@@ -936,25 +936,25 @@ function renderContentForm(data) {
                 </select>
             </div>`;
         } else if (campo.tipo_campo === 'fecha') {
-            return `<div class="form-group">
+            return `<div class="form-group" data-field="${campo.nombre_campo}">
                 <label>${escHtml(campo.nombre_display)}</label>
                 <input type="date" class="form-control" id="form_${campo.nombre_campo}" value="${val}" ${disabled}>
             </div>`;
         } else if (campo.tipo_campo === 'numero') {
-            return `<div class="form-group">
+            return `<div class="form-group" data-field="${campo.nombre_campo}">
                 <label>${escHtml(campo.nombre_display)}</label>
                 <input type="number" class="form-control" id="form_${campo.nombre_campo}" value="${val}" ${disabled}>
             </div>`;
         } else if (campo.tipo_campo === 'url') {
             if (!isPP && campo.nombre_campo === 'enlace_contenido') {
-                return `<div class="form-group" style="grid-column: 1 / -1; margin-bottom:0;">
+                return `<div class="form-group" data-field="${campo.nombre_campo}" style="grid-column: 1 / -1; margin-bottom:0;">
                     <label>${escHtml(campo.nombre_display)}</label>
                     ${val ? `<a href="${escHtml(val)}" target="_blank" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:6px;width:fit-content;"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg> Abrir Enlace de Producción</a>` : `<div style="color:var(--text-muted);font-size:0.9rem;">Aún no hay enlace de producción</div>`}
                     <input type="hidden" id="form_${campo.nombre_campo}" value="${escHtml(val)}">
                 </div>`;
             }
             if (campo.nombre_campo === 'enlace_diseno') {
-                return `<div class="form-group" style="margin-bottom:0;">
+                return `<div class="form-group" data-field="${campo.nombre_campo}" style="margin-bottom:0;">
                     <label style="display:flex; align-items:center; justify-content:space-between; color:#10b981;">
                         <span style="display:flex; align-items:center; gap:6px;">
                             <svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="width:1.2em;height:1.2em;">
@@ -968,7 +968,7 @@ function renderContentForm(data) {
                            placeholder="https://drive.google.com/..." ${disabled} style="border-color:#10b981; background:rgba(16,185,129,0.05);">
                 </div>`;
             }
-            return `<div class="form-group" style="margin-bottom:0;">
+            return `<div class="form-group" data-field="${campo.nombre_campo}" style="margin-bottom:0;">
                 <label style="display:flex; align-items:center; justify-content:space-between;">
                     <span>${escHtml(campo.nombre_display)}</span>
                     ${val ? `<a href="${escHtml(val)}" target="_blank" title="Abrir enlace" style="color:var(--accent); display:flex; align-items:center; font-size:0.75rem; text-transform:none; letter-spacing:normal;"><svg class="svg-icon" style="width:14px;height:14px;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>Abrir</a>` : ''}
@@ -979,7 +979,7 @@ function renderContentForm(data) {
         } else if (campo.tipo_campo === 'textarea') {
             const isSmall = ['idea', 'atributo', 'observaciones'].includes(campo.nombre_campo);
             const gridCol = isSmall ? 'span 1' : '1 / -1';
-            return `<div class="form-group" style="grid-column: ${gridCol};">
+            return `<div class="form-group" data-field="${campo.nombre_campo}" style="grid-column: ${gridCol};">
                 <label>${escHtml(campo.nombre_display)}</label>
                 <textarea class="form-control" id="form_${campo.nombre_campo}" rows="1" style="min-height:28px;resize:none;overflow:hidden;" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" spellcheck="true" lang="es" ${disabled}>${escHtml(val)}</textarea>
             </div>`;
@@ -999,7 +999,7 @@ function renderContentForm(data) {
 
     // Post Productor inline in grid
     if (APP_PERMS.asignar_pp || APP_USER.rol === 'admin') {
-        html += `<div class="form-group">
+        html += `<div class="form-group" data-field="postproductor_id">
             <label>POST-PRODUCTOR ASIGNADO</label>
             <select class="form-control" id="form_postproductor_id">
                 <option value="">&#8212; Sin asignar &#8212;</option>
@@ -1007,7 +1007,7 @@ function renderContentForm(data) {
             </select>
         </div>`;
     } else if (isPP && APP_PERMS.asignar_pp === 'self') {
-        html += `<div class="form-group">
+        html += `<div class="form-group" data-field="postproductor_id">
             <label>POST-PRODUCTOR</label>
             <button class="btn btn-sm ${data.postproductor_id == APP_USER.id ? 'btn-success' : 'btn-secondary'}"
                     onclick="assignSelfPP()" id="btnAssignPP" style="display:flex; align-items:center; gap:6px; width:100%; justify-content:center;">
@@ -2685,7 +2685,22 @@ function openModal(id) {
     document.body.style.overflow = 'hidden';
 }
 
+function toggleSimpleMode() {
+    const isSimple = document.getElementById('simpleModeToggle').checked;
+    const body = document.getElementById('modalBody');
+    if (isSimple) {
+        body.classList.add('simple-mode-active');
+    } else {
+        body.classList.remove('simple-mode-active');
+    }
+}
+
 function closeModal() {
+    const simpleToggle = document.getElementById('simpleModeToggle');
+    if (simpleToggle) simpleToggle.checked = false;
+    const body = document.getElementById('modalBody');
+    if (body) body.classList.remove('simple-mode-active');
+
     document.getElementById('contentModal').classList.remove('active');
     document.body.style.overflow = '';
     state.editingId = null;
