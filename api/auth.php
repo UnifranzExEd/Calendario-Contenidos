@@ -89,12 +89,12 @@ function getPermissions($rol) {
             'archivar' => false, 'ver_historial' => true,
         ],
         'postproductor' => [
-            'ver_pestanas' => true, 'crear_contenido' => true, 'editar_contenido' => true,
-            'editar_cualquier' => true, 'cambiar_estado' => ['En elaboración','Redacción','En revisión','Producción','Corrección','Aprobado','Programado','Publicado'],
-            'asignar_pp' => true, 'subir_link_producido' => true, 'subir_link_publicado' => true,
-            'registrar_metricas' => true, 'gestionar_usuarios' => true, 'config_campos' => true,
-            'config_dropdowns' => true, 'exportar' => true, 'gestionar_hashtags' => true,
-            'archivar' => true, 'ver_historial' => true,
+            'ver_pestanas' => true, 'crear_contenido' => false, 'editar_contenido' => true,
+            'editar_cualquier' => false, 'cambiar_estado' => ['Producción','Corrección'],
+            'asignar_pp' => 'self', 'subir_link_producido' => true, 'subir_link_publicado' => false,
+            'registrar_metricas' => false, 'gestionar_usuarios' => false, 'config_campos' => false,
+            'config_dropdowns' => false, 'exportar' => false, 'gestionar_hashtags' => false,
+            'archivar' => false, 'ver_historial' => false,
         ],
     ];
     return $perms[$rol] ?? [];
