@@ -4459,6 +4459,7 @@ function renderKanban() {
         card.draggable = true;
         card.dataset.id = mt.id;
         card.onclick = () => editMicrotarea(mt.id);
+        card.oncontextmenu = (e) => showMicrotareaContextMenu(e, mt.id);
         
         // Setup Drag & Drop
         card.addEventListener('dragstart', e => {
@@ -4515,6 +4516,147 @@ document.querySelectorAll('.kanban-col').forEach(col => {
         }
     });
 });
+
+let currentMicrotareaContextId = null;
+
+function showMicrotareaContextMenu(e, id) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const existing = document.getElementById('mtContextMenu');
+    if (existing) existing.remove();
+
+    currentMicrotareaContextId = id;
+    const mt = currentMicrotareas.find(m => m.id == id);
+    if (!mt) return;
+
+    const isAdmin = APP_USER && APP_USER.rol === 'admin';
+    const estadoActual = mt.estado || 'Pendiente';
+    const ESTADOS = ['Pendiente', 'En proceso', 'Completada'];
+    const estadoItems = ESTADOS
+        .filter(st => st !== estadoActual)
+        .map(st => `
+            <div class="cm-item cm-sub-item" onclick="handleMicrotareaContext('estado:${st}')">
+                ${st}
+            </div>`)
+        .join('');
+
+    const cm = document.createElement('div');
+    cm.id = 'mtContextMenu';
+    cm.className = 'context-menu';
+    cm.innerHTML = `
+        <div class="cm-header">
+            <svg class="svg-icon" viewBox="0 0 24 24" style="width:12px;height:12px;opacity:0.6"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>
+            <span>${escHtml(mt.titulo).substring(0, 30)}${mt.titulo.length >= 30 ? '…' : ''}</span>
+        </div>
+        <div class="cm-separator"></div>
+
+        <div class="cm-item" onclick="handleMicrotareaContext('edit')">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+            Editar
+        </div>
+        <div class="cm-item" onclick="handleMicrotareaContext('duplicate')">
+            <svg class="svg-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Duplicar
+        </div>
+
+        <div class="cm-separator"></div>
+        <div class="cm-item cm-has-sub" id="mtSubEstadoTrigger">
+            <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            Cambiar Estado
+            <svg viewBox="0 0 24 24" style="width:12px;height:12px;margin-left:auto;opacity:0.5" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </div>
+        <div class="cm-submenu" id="mtSubEstado">
+            ${estadoItems}
+        </div>
+
+        ${isAdmin ? `
+        <div class="cm-separator"></div>
+        <div class="cm-item danger" onclick="handleMicrotareaContext('delete')">
+            <svg class="svg-icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            Eliminar
+        </div>` : ''}
+    `;
+    
+    document.body.appendChild(cm);
+
+    // Submenu logic
+    const subTrigger = cm.querySelector('#mtSubEstadoTrigger');
+    const subMenu = cm.querySelector('#mtSubEstado');
+    if (subTrigger && subMenu) {
+        subTrigger.addEventListener('mouseenter', () => subMenu.classList.add('open'));
+        subTrigger.addEventListener('mouseleave', () => {
+            setTimeout(() => { if (!subMenu.matches(':hover')) subMenu.classList.remove('open'); }, 150);
+        });
+        subMenu.addEventListener('mouseleave', () => subMenu.classList.remove('open'));
+    }
+
+    // Positioning
+    cm.style.display = 'block';
+    const rect = cm.getBoundingClientRect();
+    let x = e.clientX;
+    let y = e.clientY;
+    if (x + rect.width > window.innerWidth) x -= rect.width;
+    if (y + rect.height > window.innerHeight) y -= rect.height;
+    cm.style.left = (x + window.scrollX) + 'px';
+    cm.style.top = (y + window.scrollY) + 'px';
+
+    const closeMenu = (ev) => {
+        if (!cm.contains(ev.target)) {
+            cm.remove();
+            document.removeEventListener('click', closeMenu);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', closeMenu), 10);
+    window.addEventListener('scroll', () => cm.remove(), { once: true, capture: true });
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') cm.remove(); }, { once: true });
+}
+
+async function handleMicrotareaContext(action) {
+    const cm = document.getElementById('mtContextMenu');
+    if (cm) cm.remove();
+    if (!currentMicrotareaContextId) return;
+
+    const id = currentMicrotareaContextId;
+    currentMicrotareaContextId = null;
+    const mt = currentMicrotareas.find(m => m.id == id);
+    if (!mt) return;
+
+    if (action === 'edit') {
+        editMicrotarea(id);
+    } else if (action === 'duplicate') {
+        try {
+            const data = {
+                titulo: mt.titulo + ' (Copia)',
+                descripcion: mt.descripcion,
+                fecha_entrega: mt.fecha_entrega,
+                prioridad: mt.prioridad,
+                estado: mt.estado,
+                responsable_id: mt.responsable_id,
+                checklist: (mt.checklist || []).map(c => ({texto: c.texto, completada: 0}))
+            };
+            await apiPost('microtareas.php?action=create', data);
+            showToast('Microtarea duplicada ✓', 'success');
+            loadMicrotareas();
+        } catch (e) { showToast(e.message, 'error'); }
+    } else if (action === 'delete') {
+        if (!APP_USER || APP_USER.rol !== 'admin') return;
+        const ok = await customConfirm('¿Eliminar esta microtarea?');
+        if (!ok) return;
+        try {
+            await apiPost('microtareas.php?action=delete', { id });
+            showToast('Microtarea eliminada', 'success');
+            loadMicrotareas();
+        } catch (e) { showToast(e.message, 'error'); }
+    } else if (action.startsWith('estado:')) {
+        const nuevoEstado = action.replace('estado:', '');
+        try {
+            await apiPost('microtareas.php?action=update', { id, estado: nuevoEstado });
+            showToast(`Estado → ${nuevoEstado}`, 'success');
+            loadMicrotareas();
+        } catch (e) { showToast(e.message, 'error'); }
+    }
+}
 
 function openMicrotareaModal() {
     document.getElementById('mtId').value = '';
