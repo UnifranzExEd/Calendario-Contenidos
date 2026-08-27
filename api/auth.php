@@ -149,7 +149,7 @@ switch ($action) {
 
         // Create new session token
         $token   = bin2hex(random_bytes(32));
-        $expires = date('Y-m-d H:i:s', strtotime('+24 hours'));
+        $expires = date('Y-m-d H:i:s', strtotime('+365 days'));
         sb_insert('user_sessions', [
             'token'      => $token,
             'user_id'    => $user['id'],
@@ -158,7 +158,7 @@ switch ($action) {
             'expires_at' => $expires,
         ]);
 
-        setcookie('auth_token', $token, ['expires' => time()+86400, 'path' => '/', 'httponly' => true, 'secure' => true, 'samesite' => 'Lax']);
+        setcookie('auth_token', $token, ['expires' => time()+(86400*365), 'path' => '/', 'httponly' => true, 'secure' => true, 'samesite' => 'Lax']);
 
         jsr([
             'success' => true,

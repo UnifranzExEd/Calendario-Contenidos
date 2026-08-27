@@ -6,9 +6,9 @@
 
 // These globals are set by dashboard.html or dashboard.php before this script loads
 
-// â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
+// ══════════════════════════════════════════
 // STATE
-// â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
+// ══════════════════════════════════════════
 const state = {
     currentTab: 'pauta',
     currentMonth: '',
@@ -25,9 +25,16 @@ const state = {
     sortDir: 'asc',
 };
 
-// â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
+// Session-stable cache-buster (same for entire session, changes on reload)
+const _SESSION_CACHE_KEY = Date.now().toString(36);
+
+// Internal debounce for loadContents
+let _loadContentsTimer = null;
+let _loadContentsAbort = null;
+
+// ══════════════════════════════════════════
 // API HELPERS
-// â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
+// ══════════════════════════════════════════
 async function api(endpoint, params = {}) {
     const url = new URL(API_BASE + '/' + endpoint, window.location.href);
     Object.keys(params).forEach(k => {
@@ -35,8 +42,8 @@ async function api(endpoint, params = {}) {
             url.searchParams.set(k, params[k]);
         }
     });
-    // Bust cache for GET requests
-    url.searchParams.set('_t', Date.now());
+    // Bust cache per session (not per-request — allows browser back/forward cache)
+    url.searchParams.set('_v', _SESSION_CACHE_KEY);
     const token = localStorage.getItem('auth_token');
     const headers = {};
     if (token) headers['X-Auth-Token'] = token;
@@ -153,12 +160,14 @@ async function initApp() {
         const savedView  = localStorage.getItem('uf_lastView');
 
         if (savedView === 'calendar') setView('calendar');
+        // Use skipLoad=true to avoid double loadContents (tab + month each triggered one)
         const tabToUse = (savedTab && state.pestanas.find(p => p.slug === savedTab)) ? savedTab : state.currentTab;
-        setActiveTab(tabToUse);
+        setActiveTab(tabToUse, true);
         checkNotifications();
 
         const meses = ['','ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
         const monthToUse = savedMonth || meses[new Date().getMonth() + 1];
+        // selectMonth with skipLoad=false → triggers the SINGLE initial loadContents
         selectMonth(monthToUse);
 
         // Poll notifications every 60s
@@ -197,7 +206,7 @@ function renderTabsBar() {
     `).join('');
 }
 
-function setActiveTab(slug) {
+function setActiveTab(slug, skipLoad = false) {
     state.currentTab = slug;
     localStorage.setItem('uf_lastTab', slug);
     
@@ -224,19 +233,19 @@ function setActiveTab(slug) {
     document.getElementById('tableView').style.display = state.currentView === 'table' ? '' : 'none';
     document.getElementById('calendarView').style.display = state.currentView === 'calendar' ? '' : 'none';
 
-    loadContents();
+    if (!skipLoad) loadContents();
 }
 
 // â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
 // MONTHS
 // â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
-function selectMonth(month) {
+function selectMonth(month, skipLoad = false) {
     state.currentMonth = month;
     localStorage.setItem('uf_lastMonth', month);
     document.querySelectorAll('.month-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.month === month);
     });
-    loadContents();
+    if (!skipLoad) loadContents();
 }
 
 document.getElementById('monthGrid').addEventListener('click', (e) => {
@@ -300,30 +309,59 @@ function debounceSearch() {
 // LOAD CONTENTS
 // â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
 async function loadContents() {
-    try {
-        const res = await api('contenidos.php', {
-            action: 'list',
-            pestana: state.currentTab === 'all' ? '' : state.currentTab,
-            mes: state.currentMonth,
-            search: state.searchQuery,
-            ...state.filters
-        });
+    // Debounce: cancel previous pending load if called in rapid succession
+    if (_loadContentsTimer) clearTimeout(_loadContentsTimer);
+    if (_loadContentsAbort) _loadContentsAbort.abort();
 
-        state.contenidos = res.data;
-        document.getElementById('contentCount').textContent = `${res.total} contenidos`;
+    return new Promise((resolve) => {
+        _loadContentsTimer = setTimeout(async () => {
+            _loadContentsTimer = null;
+            const controller = new AbortController();
+            _loadContentsAbort = controller;
+            try {
+                const url = new URL(API_BASE + '/contenidos.php', window.location.href);
+                url.searchParams.set('action', 'list');
+                const tab = state.currentTab === 'all' ? '' : state.currentTab;
+                if (tab) url.searchParams.set('pestana', tab);
+                if (state.currentMonth) url.searchParams.set('mes', state.currentMonth);
+                if (state.searchQuery) url.searchParams.set('search', state.searchQuery);
+                Object.keys(state.filters).forEach(k => {
+                    if (state.filters[k]) url.searchParams.set(k, state.filters[k]);
+                });
+                url.searchParams.set('_v', _SESSION_CACHE_KEY);
 
-        // Update tab count
-        const countEl = document.getElementById('count-' + state.currentTab);
-        if (countEl) countEl.textContent = res.total;
+                const token = localStorage.getItem('auth_token');
+                const headers = {};
+                if (token) headers['X-Auth-Token'] = token;
 
-        if (state.currentView === 'table') {
-            renderTable();
-        } else {
-            renderCalendar();
-        }
-    } catch (err) {
-        showToast('Error al cargar contenidos: ' + err.message, 'error');
-    }
+                const fetchRes = await fetch(url, { headers, signal: controller.signal });
+                if (!fetchRes.ok) {
+                    if (fetchRes.status === 401) { localStorage.removeItem('auth_token'); window.location.href = 'index.html'; return; }
+                    throw new Error('Error del servidor');
+                }
+                const res = await fetchRes.json();
+
+                state.contenidos = res.data;
+                document.getElementById('contentCount').textContent = `${res.total} contenidos`;
+
+                // Update tab count
+                const countEl = document.getElementById('count-' + state.currentTab);
+                if (countEl) countEl.textContent = res.total;
+
+                if (state.currentView === 'table') {
+                    renderTable();
+                } else {
+                    renderCalendar();
+                }
+            } catch (err) {
+                if (err.name === 'AbortError') return; // Superseded by newer call
+                showToast('Error al cargar contenidos: ' + err.message, 'error');
+            } finally {
+                if (_loadContentsAbort === controller) _loadContentsAbort = null;
+            }
+            resolve();
+        }, 80); // 80ms debounce — fast enough to feel instant, prevents burst
+    });
 }
 
 // ══════════════════════════════════════════
@@ -551,12 +589,60 @@ function showDropdownPicker(e, id, field, grupo) {
 
 async function selectDropdownOption(id, field, value) {
     document.querySelectorAll('.inline-dropdown').forEach(el => el.remove());
+
+    // Optimistic UI update: update badge in-place without full reload
+    const item = state.contenidos.find(c => c.id == id);
+    const oldValue = item ? item[field] : null;
+    if (item) item[field] = value;
+
+    // Update the badge visually in the DOM row
+    const row = document.querySelector(`tr[data-id="${id}"]`);
+    if (row) {
+        // Re-render just the changed cell
+        const opciones = state.dropdowns[field] || [];
+        const opcion = opciones.find(o => o.valor === value);
+        const color = opcion ? opcion.color : '#6b7280';
+        const badgeClass = getBadgeClass(field, value);
+        // Find the td that contains this field's badge
+        const badges = row.querySelectorAll('.badge');
+        badges.forEach(badge => {
+            const parentTd = badge.closest('td');
+            if (parentTd) {
+                // Check if this badge's onclick references the right field
+                const onclickStr = badge.getAttribute('onclick') || '';
+                if (onclickStr.includes(`'${field}'`)) {
+                    if (field === 'red_social') {
+                        const svgIcons = getSocialIcon(value);
+                        const abbr = getSocialAbbr(value);
+                        badge.innerHTML = `<span style="display:flex;align-items:center;gap:4px;">${svgIcons}<span style="font-weight:600;font-size:0.75rem;">${abbr}</span></span>`;
+                    } else {
+                        badge.className = `badge ${badgeClass}`;
+                        badge.style.background = hexToRgba(color, 0.15);
+                        badge.style.color = lightenColor(color);
+                        const dot = badge.querySelector('.badge-dot');
+                        if (dot) dot.style.background = color;
+                        const textNode = badge.childNodes[badge.childNodes.length - 1];
+                        if (textNode && textNode.nodeType === 3) {
+                            textNode.textContent = '\n                ' + (value || '—') + '\n            ';
+                        } else {
+                            // fallback: find text after dot
+                            const dotEl = badge.querySelector('.badge-dot');
+                            if (dotEl && dotEl.nextSibling) dotEl.nextSibling.textContent = '\n                ' + (value || '—') + '\n            ';
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     try {
         await apiPost('contenidos.php?action=inline', { id, field, value });
         showToast('Actualizado', 'success');
-        loadContents();
     } catch (err) {
+        // Revert optimistic update on failure
+        if (item) item[field] = oldValue;
         showToast('Error: ' + err.message, 'error');
+        loadContents(); // Full reload only on error
     }
 }
 
@@ -600,7 +686,8 @@ function renderCalendar() {
     const rawDow = firstDay.getDay(); // 0=Sun
     const startDow = (rawDow + 6) % 7; // Mon=0, Tue=1, ..., Sun=6
 
-    // Calculate Mini Dashboard counts
+    // Pre-index contents by date — O(n) once instead of O(n) per day
+    const contentsByDate = new Map();
     const countsBySocial = {};
     const countsByState = {};
     let totalItems = 0;
@@ -611,6 +698,11 @@ function renderCalendar() {
         const estado = c.estado || 'Sin estado';
         countsBySocial[red] = (countsBySocial[red] || 0) + 1;
         countsByState[estado] = (countsByState[estado] || 0) + 1;
+        // Index by fecha
+        if (c.fecha) {
+            if (!contentsByDate.has(c.fecha)) contentsByDate.set(c.fecha, []);
+            contentsByDate.get(c.fecha).push(c);
+        }
     });
 
     let miniDashHtml = `<div><strong>Total:</strong> ${totalItems}</div>`;
@@ -650,7 +742,7 @@ function renderCalendar() {
     for (let d = 1; d <= lastDay.getDate(); d++) {
         const dateStr = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         const isToday = today.getDate() === d && today.getMonth() === monthIdx && today.getFullYear() === year;
-        const dayContents = state.contenidos.filter(c => c.fecha === dateStr);
+        const dayContents = contentsByDate.get(dateStr) || [];
 
         html += `<div class="calendar-day ${isToday ? 'today' : ''}" onclick="openDayDetail('${dateStr}')" oncontextmenu="showCalendarDayContextMenu(event, '${dateStr}')">`;
         html += `<div class="day-number">${d}</div>`;
@@ -762,15 +854,9 @@ function renderCalendar() {
 
     grid.innerHTML = html;
 
-    // List view (mobile)
+    // List view (mobile) — reuse pre-indexed contentsByDate
     let listHtml = '';
-    const daysWithContent = {};
-    state.contenidos.forEach(c => {
-        if (c.fecha) {
-            if (!daysWithContent[c.fecha]) daysWithContent[c.fecha] = [];
-            daysWithContent[c.fecha].push(c);
-        }
-    });
+    const daysWithContent = Object.fromEntries(contentsByDate);
 
     Object.keys(daysWithContent).sort().forEach(date => {
         const d = new Date(date + 'T00:00:00');
@@ -885,20 +971,20 @@ function renderContentForm(data) {
         { nombre_campo: 'fecha',         nombre_display: 'FECHA',             tipo_campo: 'fecha',    ancho: '160px' },
         { nombre_campo: 'buyer',         nombre_display: 'BUYER',             tipo_campo: 'dropdown', dropdown_grupo: 'buyer',      ancho: '160px' },
         { nombre_campo: 'pilar',         nombre_display: 'TIPO PIEZA',        tipo_campo: 'dropdown', dropdown_grupo: 'pilar',      ancho: '160px' },
-        { nombre_campo: 'atributo',      nombre_display: 'ATRIBUTO',          tipo_campo: 'dropdown', dropdown_grupo: 'atributo',   ancho: '160px' },
         { nombre_campo: 'red_social',    nombre_display: 'RED SOCIAL',        tipo_campo: 'dropdown', dropdown_grupo: 'red_social', ancho: '160px' },
         { nombre_campo: 'estado',        nombre_display: 'ESTADO',            tipo_campo: 'dropdown', dropdown_grupo: 'estado',     ancho: '160px' },
         { nombre_campo: 'prioridad',     nombre_display: 'PRIORIDAD',         tipo_campo: 'dropdown', dropdown_grupo: 'prioridad',  ancho: '120px' },
-        { nombre_campo: 'formato',       nombre_display: 'SERIE EDITORIAL',   tipo_campo: 'dropdown', dropdown_grupo: 'formato',    ancho: '160px' },
         { nombre_campo: 'formato_pieza', nombre_display: 'FORMATO',           tipo_campo: 'texto',    ancho: '120px' },
         { nombre_campo: 'ubicaciones',   nombre_display: 'UBICACIONES',       tipo_campo: 'texto',    ancho: '160px' },
-        { nombre_campo: 'horario',       nombre_display: 'HORARIO',           tipo_campo: 'texto',    ancho: '120px' },
     ];
     const STANDARD_NAMES = new Set(STANDARD_CAMPOS.map(c => c.nombre_campo));
+    const HIDDEN_CAMPOS = new Set(['funnel', 'emocion', 'creencia', 'atributo', 'serie editorial', 'horario']);
 
     // Merge: standard first, then any extra tab-specific campos from DB
     const dbCampos = (state.campos[state.modalTab] || []).filter(c =>
-        !STANDARD_NAMES.has(c.nombre_campo)   // skip duplicates of standard fields
+        !STANDARD_NAMES.has(c.nombre_campo) && 
+        !HIDDEN_CAMPOS.has((c.nombre_campo || '').toLowerCase()) && 
+        !HIDDEN_CAMPOS.has((c.nombre_display || '').toLowerCase())
     );
     const camposTab = [...STANDARD_CAMPOS, ...dbCampos];
 
@@ -1035,6 +1121,14 @@ function renderContentForm(data) {
 
     // Text fields (observaciones, etc.) spanning full width
     textFields.forEach(c => html += renderField(c));
+    
+    // Ajustes section
+    html += `<div class="editor-section" style="grid-column: 1 / -1; margin-top: 10px;">
+        <div class="editor-section-title"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Ajustes / Notas</div>
+        ${data.detalle?.ajustes ? `<div style="max-height:120px; overflow-y:auto; font-size:0.8rem; background:var(--bg-glass-hover); padding:10px; border-radius:6px; border:1px solid var(--border-color); white-space:pre-wrap; margin-bottom:8px; line-height:1.4;">${escHtml(data.detalle.ajustes)}</div>` : ''}
+        <textarea class="form-control" id="form_nuevo_ajuste" rows="2" placeholder="Agregar nuevo ajuste o nota (se registrará con fecha y hora)..." style="font-size:0.85rem; resize:vertical;"></textarea>
+        <input type="hidden" id="form_ajustes_actuales" value="${escHtml(data.detalle?.ajustes || '')}">
+    </div>`;
 
 
 
@@ -1572,9 +1666,8 @@ async function saveContent() {
     // Always collect these standard fields (mirrors renderContentForm logic)
     const STANDARD_CAMPOS = [
         { nombre_campo: 'tema' }, { nombre_campo: 'fecha' }, { nombre_campo: 'buyer' },
-        { nombre_campo: 'pilar' }, { nombre_campo: 'atributo' }, { nombre_campo: 'red_social' },
-        { nombre_campo: 'estado' }, { nombre_campo: 'formato' }, { nombre_campo: 'horario' },
-        { nombre_campo: 'formato_pieza' }, { nombre_campo: 'ubicaciones' },
+        { nombre_campo: 'pilar' }, { nombre_campo: 'red_social' },
+        { nombre_campo: 'estado' }, { nombre_campo: 'formato_pieza' }, { nombre_campo: 'ubicaciones' },
         { nombre_campo: 'enlace_publicado' }, { nombre_campo: 'enlace_diseno' }, { nombre_campo: 'enlace_contenido' },
     ];
     const STANDARD_NAMES = new Set(STANDARD_CAMPOS.map(c => c.nombre_campo));
@@ -1603,6 +1696,17 @@ async function saveContent() {
     data.copy_linkedin = document.getElementById('formCopyLI')?.value || '';
     data.cta = document.getElementById('form_cta')?.value || '';
 
+    // Handle Ajustes
+    const nuevoAjuste = document.getElementById('form_nuevo_ajuste')?.value?.trim();
+    const existingAjustes = document.getElementById('form_ajustes_actuales')?.value || '';
+    data.ajustes = existingAjustes;
+    if (nuevoAjuste) {
+        const userStr = APP_USER?.nombre || 'Usuario';
+        const timestamp = new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const entry = `[${timestamp}] ${userStr}: ${nuevoAjuste}`;
+        data.ajustes = existingAjustes ? `${entry}\n${existingAjustes}` : entry;
+    }
+
     // Slides
     data.slides = [];
     document.querySelectorAll('#slidesContainer .slide-item').forEach(el => {
@@ -1616,23 +1720,37 @@ async function saveContent() {
 
     try {
         const btnSave = document.getElementById('btnSave');
-        btnSave.innerHTML = '<span class="loading-spinner"></span> Comprobando Ortografía...';
+        btnSave.innerHTML = '<span class="loading-spinner"></span> Guardando...';
         btnSave.disabled = true;
 
-        const spellRes = await checkSpellingErrors(data);
-        data.error_ortografico = spellRes.hasError;
-        data.error_ortografico_detalle = spellRes.detail;
-        
-        btnSave.innerHTML = '<span class="loading-spinner"></span> Guardando...';
+        // Fire spellcheck in background (non-blocking) — don't wait for it
+        const spellPromise = checkSpellingErrors(data).catch(() => ({ hasError: 0, detail: null }));
 
+        // Save content immediately without waiting for spellcheck
         if (state.editingId) {
             data.id = state.editingId;
             await apiPost('contenidos.php?action=update', data);
             showToast('Contenido actualizado', 'success');
         } else {
-            await apiPost('contenidos.php?action=create', data);
+            const createRes = await apiPost('contenidos.php?action=create', data);
+            if (createRes && createRes.id) data.id = createRes.id;
             showToast('Contenido creado', 'success');
         }
+
+        // Now apply spellcheck result as a background patch (if it finished)
+        try {
+            const spellRes = await Promise.race([
+                spellPromise,
+                new Promise(resolve => setTimeout(() => resolve({ hasError: 0, detail: null }), 3000))
+            ]);
+            if (spellRes.hasError && data.id) {
+                apiPost('contenidos.php?action=inline', {
+                    id: data.id || state.editingId,
+                    field: 'error_ortografico',
+                    value: '1'
+                }).catch(() => {}); // fire-and-forget
+            }
+        } catch(_) { /* spellcheck failure is non-critical */ }
 
         // Save metrics if visible
         if (document.getElementById('metLikes')) {
@@ -3272,7 +3390,7 @@ async function deleteReferenciaVisual(imagenId) {
 }
 function handleCapturaPasteDashboard(e) {
     const modal = document.getElementById('contentModal');
-    if (!modal || !modal.classList.contains('open')) return;
+    if (!modal || !modal.classList.contains('active')) return; // Fix: was 'open', modal uses 'active'
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     const id = state.editingId;
     if (!id) return;
@@ -3280,6 +3398,7 @@ function handleCapturaPasteDashboard(e) {
     const items = e.clipboardData?.items || [];
     for (const item of items) {
         if (item.type.startsWith('image/')) {
+            e.preventDefault(); // Prevent default paste behavior
             const file = item.getAsFile();
             if (window._hoveredZone === 'referencia') {
                 uploadReferenciaVisual(file);

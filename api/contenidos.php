@@ -153,7 +153,7 @@ switch ($action) {
 
         // Detail
         $detBody = [];
-        foreach (['titulo_post','copy_facebook','copy_instagram','copy_tiktok','copy_linkedin','cta'] as $f) {
+        foreach (['titulo_post','copy_facebook','copy_instagram','copy_tiktok','copy_linkedin','cta','ajustes'] as $f) {
             if (isset($input[$f])) {
                 $detBody[] = ['contenido_id' => $cid, 'campo' => $f, 'valor' => $input[$f]];
             }
@@ -205,7 +205,7 @@ switch ($action) {
             sb_post('historial_estado', ['contenido_id' => $id, 'estado_anterior' => $cur['estado'], 'estado_nuevo' => $input['estado'], 'usuario_id' => $user['id']]);
         }
         // Detail
-        $detFields = ['titulo_post','copy_facebook','copy_instagram','copy_tiktok','copy_linkedin','cta'];
+        $detFields = ['titulo_post','copy_facebook','copy_instagram','copy_tiktok','copy_linkedin','cta','ajustes'];
         $detBody   = [];
         foreach ($detFields as $f) { 
             if (array_key_exists($f, $input)) {
