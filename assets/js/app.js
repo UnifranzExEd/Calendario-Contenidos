@@ -988,265 +988,311 @@ function renderContentForm(data) {
     );
     const camposTab = [...STANDARD_CAMPOS, ...dbCampos];
 
-    let html = `<div class="editor-section">
-        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 8px 10px; margin-bottom: 12px;">`;
-    const shortFields = [];
-    const linkFields  = [];
-    const textFields  = [];
-    let temaField = null;
-    
-    camposTab.forEach(campo => {
-        if (campo.nombre_campo === 'tema') {
-            temaField = campo;
-        } else if (campo.tipo_campo === 'url' && campo.nombre_campo !== 'enlace_contenido') {
-            linkFields.push(campo);
-        } else if (campo.tipo_campo === 'textarea' || campo.ancho === '100%') {
-            textFields.push(campo);
-        } else {
-            shortFields.push(campo);
-        }
-    });
+    let html = '';
 
+    // ══════════════════════════════════════════════════════════════════════
+    // ZONE 1 — IDENTIFICATION BAR (top, compact, full width)
+    // ══════════════════════════════════════════════════════════════════════
+    html += `<div class="editor-section" style="margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border-color);">`;
 
-    // Helper to generate field HTML
-    const renderField = (campo) => {
-        const val = data[campo.nombre_campo] || '';
-        const disabled = '';
-        
-        if (campo.nombre_campo === 'tema') {
-            return `<div class="form-group" data-field="${campo.nombre_campo}" style="grid-column: 1 / -1;">
-                <label>TÍTULO</label>
-                <input type="text" class="form-control" id="form_${campo.nombre_campo}" spellcheck="true" lang="es" value="${escHtml(val)}" ${disabled}>
-            </div>`;
-        } else if (campo.tipo_campo === 'dropdown' && campo.dropdown_grupo) {
-            const opciones = state.dropdowns[campo.dropdown_grupo] || [];
-            return `<div class="form-group" data-field="${campo.nombre_campo}">
-                <label>${escHtml(campo.nombre_display)}</label>
-                <select class="form-control" id="form_${campo.nombre_campo}" ${disabled}>
-                    <option value="">&#8212; Seleccionar &#8212;</option>
-                    ${opciones.map(o => `<option value="${escHtml(o.valor)}" ${o.valor === val ? "selected" : ""}>${escHtml(o.valor)}</option>`).join('')}
-                </select>
-            </div>`;
-        } else if (campo.tipo_campo === 'fecha') {
-            return `<div class="form-group" data-field="${campo.nombre_campo}">
-                <label>${escHtml(campo.nombre_display)}</label>
-                <input type="date" class="form-control" id="form_${campo.nombre_campo}" value="${val}" ${disabled}>
-            </div>`;
-        } else if (campo.tipo_campo === 'numero') {
-            return `<div class="form-group" data-field="${campo.nombre_campo}">
-                <label>${escHtml(campo.nombre_display)}</label>
-                <input type="number" class="form-control" id="form_${campo.nombre_campo}" value="${val}" ${disabled}>
-            </div>`;
-        } else if (campo.tipo_campo === 'url') {
-            if (!isPP && campo.nombre_campo === 'enlace_contenido') {
-                return `<div class="form-group" data-field="${campo.nombre_campo}" style="grid-column: 1 / -1; margin-bottom:0;">
-                    <label>${escHtml(campo.nombre_display)}</label>
-                    ${val ? `<a href="${escHtml(val)}" target="_blank" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:6px;width:fit-content;"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg> Abrir Enlace de Producción</a>` : `<div style="color:var(--text-muted);font-size:0.9rem;">Aún no hay enlace de producción</div>`}
-                    <input type="hidden" id="form_${campo.nombre_campo}" value="${escHtml(val)}">
+    // Title full width
+    html += `<div class="form-group" style="margin-bottom:10px;">
+        <label style="font-size:0.7rem; letter-spacing:0.08em; color:var(--text-muted);">TÍTULO</label>
+        <input type="text" class="form-control" id="form_tema" spellcheck="true" lang="es" 
+               value="${escHtml(data.tema || '')}" 
+               style="font-size:1rem; font-weight:600; padding:8px 12px; border-color: var(--border-color);">
+    </div>`;
+
+    // Key classifiers — 5 fields in one row
+    html += `<div style="display:grid; grid-template-columns: 130px 1fr 1fr 1fr 1fr; gap:8px; align-items:end;">`;
+
+    // FECHA
+    html += `<div class="form-group" style="margin-bottom:0;">
+        <label style="font-size:0.68rem; color:var(--text-muted);">FECHA</label>
+        <input type="date" class="form-control" id="form_fecha" value="${data.fecha || ''}" style="font-size:0.82rem; padding:5px 8px;">
+    </div>`;
+
+    // BUYER
+    const buyerOpts = state.dropdowns['buyer'] || [];
+    html += `<div class="form-group" style="margin-bottom:0;">
+        <label style="font-size:0.68rem; color:var(--text-muted);">BUYER</label>
+        <select class="form-control" id="form_buyer" style="font-size:0.82rem; padding:5px 8px;">
+            <option value="">— Seleccionar —</option>
+            ${buyerOpts.map(o => `<option value="${escHtml(o.valor)}" ${o.valor === (data.buyer||'') ? 'selected':''}>${escHtml(o.valor)}</option>`).join('')}
+        </select>
+    </div>`;
+
+    // TIPO PIEZA
+    const pilarOpts = state.dropdowns['pilar'] || [];
+    html += `<div class="form-group" style="margin-bottom:0;">
+        <label style="font-size:0.68rem; color:var(--text-muted);">TIPO PIEZA</label>
+        <select class="form-control" id="form_pilar" style="font-size:0.82rem; padding:5px 8px;">
+            <option value="">— Seleccionar —</option>
+            ${pilarOpts.map(o => `<option value="${escHtml(o.valor)}" ${o.valor === (data.pilar||'') ? 'selected':''}>${escHtml(o.valor)}</option>`).join('')}
+        </select>
+    </div>`;
+
+    // RED SOCIAL
+    const redOpts = state.dropdowns['red_social'] || [];
+    html += `<div class="form-group" style="margin-bottom:0;">
+        <label style="font-size:0.68rem; color:var(--text-muted);">RED SOCIAL</label>
+        <select class="form-control" id="form_red_social" style="font-size:0.82rem; padding:5px 8px;" onchange="updateCopyVisibility()">
+            <option value="">— Seleccionar —</option>
+            ${redOpts.map(o => `<option value="${escHtml(o.valor)}" ${o.valor === (data.red_social||'') ? 'selected':''}>${escHtml(o.valor)}</option>`).join('')}
+        </select>
+    </div>`;
+
+    // ESTADO (with color accent)
+    const estadoOpts = state.dropdowns['estado'] || [];
+    html += `<div class="form-group" style="margin-bottom:0;">
+        <label style="font-size:0.68rem; color:var(--text-muted);">ESTADO</label>
+        <select class="form-control" id="form_estado" style="font-size:0.82rem; padding:5px 8px; font-weight:600;">
+            <option value="">— Seleccionar —</option>
+            ${estadoOpts.map(o => `<option value="${escHtml(o.valor)}" ${o.valor === (data.estado||'') ? 'selected':''}>${escHtml(o.valor)}</option>`).join('')}
+        </select>
+    </div>`;
+
+    html += `</div>`; // close classifiers row
+
+    // Secondary meta row (less critical): FORMATO, SEMANA, UBICACIONES, OBSERVACIONES, extra DB campos
+    const obsVal = data.observaciones || '';
+    const fmtVal = data.formato_pieza || '';
+    const semVal = data.semana || '';
+    const ubiVal = data.ubicaciones || '';
+    html += `<div style="display:grid; grid-template-columns: 1fr 1fr 1fr 2fr; gap:8px; margin-top:8px; align-items:start;">
+        <div class="form-group" style="margin-bottom:0;">
+            <label style="font-size:0.68rem; color:var(--text-muted);">FORMATO</label>
+            <input type="text" class="form-control" id="form_formato_pieza" value="${escHtml(fmtVal)}" style="font-size:0.82rem; padding:5px 8px;">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+            <label style="font-size:0.68rem; color:var(--text-muted);">SEMANA</label>
+            <input type="text" class="form-control" id="form_semana" value="${escHtml(semVal)}" style="font-size:0.82rem; padding:5px 8px;">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+            <label style="font-size:0.68rem; color:var(--text-muted);">UBICACIONES</label>
+            <input type="text" class="form-control" id="form_ubicaciones" value="${escHtml(ubiVal)}" style="font-size:0.82rem; padding:5px 8px;">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+            <label style="font-size:0.68rem; color:var(--text-muted);">OBSERVACIONES</label>
+            <textarea class="form-control" id="form_observaciones" rows="1" 
+                      style="min-height:32px; resize:none; overflow:hidden; font-size:0.82rem; padding:5px 8px;"
+                      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
+                      spellcheck="true" lang="es">${escHtml(obsVal)}</textarea>
+        </div>
+    </div>`;
+
+    // Extra DB campos (SEMANA, OBSERVACIONES already handled above — skip them; render only truly new ones)
+    const extraDbCampos = dbCampos.filter(c => !['semana','observaciones','formato_pieza','ubicaciones','enlace_contenido','enlace_diseno','enlace_publicado'].includes(c.nombre_campo) && c.tipo_campo !== 'url' && c.tipo_campo !== 'textarea');
+    if (extraDbCampos.length > 0) {
+        html += `<div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-top:8px;">`;
+        extraDbCampos.forEach(c => {
+            const val = data[c.nombre_campo] || '';
+            if (c.tipo_campo === 'dropdown' && c.dropdown_grupo) {
+                const opts = state.dropdowns[c.dropdown_grupo] || [];
+                html += `<div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:0.68rem; color:var(--text-muted);">${escHtml(c.nombre_display)}</label>
+                    <select class="form-control" id="form_${c.nombre_campo}" style="font-size:0.82rem; padding:5px 8px;">
+                        <option value="">— Seleccionar —</option>
+                        ${opts.map(o => `<option value="${escHtml(o.valor)}" ${o.valor === val ? 'selected':''}>${escHtml(o.valor)}</option>`).join('')}
+                    </select>
+                </div>`;
+            } else {
+                html += `<div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:0.68rem; color:var(--text-muted);">${escHtml(c.nombre_display)}</label>
+                    <input type="text" class="form-control" id="form_${c.nombre_campo}" value="${escHtml(val)}" style="font-size:0.82rem; padding:5px 8px;">
                 </div>`;
             }
-            if (campo.nombre_campo === 'enlace_diseno') {
-                return `<div class="form-group" data-field="${campo.nombre_campo}" style="margin-bottom:0;">
-                    <label style="display:flex; align-items:center; justify-content:space-between; color:#10b981;">
-                        <span style="display:flex; align-items:center; gap:6px;">
-                            <svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="width:1.2em;height:1.2em;">
-                                <path d="M7.71 3.5L1.15 15l3.43 6 6.55-11.5M9.73 15L6.3 21h13.12l3.43-6M12.27 3.5L15.7 9.5H2.57L6 3.5z"/>
-                            </svg>
-                            ${escHtml(campo.nombre_display)}
-                        </span>
-                        ${val ? `<a href="${escHtml(val)}" target="_blank" title="Abrir enlace" style="color:var(--accent); display:flex; align-items:center; font-size:0.75rem; text-transform:none; letter-spacing:normal;"><svg class="svg-icon" style="width:14px;height:14px;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>Abrir</a>` : ''}
-                    </label>
-                    <input type="url" class="form-control" id="form_${campo.nombre_campo}" value="${escHtml(val)}" 
-                           placeholder="https://drive.google.com/..." ${disabled} style="border-color:#10b981; background:rgba(16,185,129,0.05);">
-                </div>`;
-            }
-            return `<div class="form-group" data-field="${campo.nombre_campo}" style="margin-bottom:0;">
-                <label style="display:flex; align-items:center; justify-content:space-between;">
-                    <span>${escHtml(campo.nombre_display)}</span>
-                    ${val ? `<a href="${escHtml(val)}" target="_blank" title="Abrir enlace" style="color:var(--accent); display:flex; align-items:center; font-size:0.75rem; text-transform:none; letter-spacing:normal;"><svg class="svg-icon" style="width:14px;height:14px;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>Abrir</a>` : ''}
-                </label>
-                <input type="url" class="form-control" id="form_${campo.nombre_campo}" value="${escHtml(val)}" 
-                       placeholder="https://..." ${disabled}>
-            </div>`;
-        } else if (campo.tipo_campo === 'textarea') {
-            const isSmall = ['idea', 'atributo', 'observaciones'].includes(campo.nombre_campo);
-            const gridCol = isSmall ? 'span 1' : '1 / -1';
-            return `<div class="form-group" data-field="${campo.nombre_campo}" style="grid-column: ${gridCol};">
-                <label>${escHtml(campo.nombre_display)}</label>
-                <textarea class="form-control" id="form_${campo.nombre_campo}" rows="1" style="min-height:28px;resize:none;overflow:hidden;" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" spellcheck="true" lang="es" ${disabled}>${escHtml(val)}</textarea>
-            </div>`;
-        } else {
-            return `<div class="form-group">
-                <label>${escHtml(campo.nombre_display)}</label>
-                <input type="text" class="form-control" id="form_${campo.nombre_campo}" spellcheck="true" lang="es" value="${escHtml(val)}" ${disabled}>
-            </div>`;
-        }
-    };
-
-    // Render TEMA (TITULO) first if exists
-    if (temaField) html += renderField(temaField);
-
-    // Render short fields
-    shortFields.forEach(c => html += renderField(c));
-
-    // Post Productor inline in grid
-    if (APP_PERMS.asignar_pp || APP_USER.rol === 'admin') {
-        html += `<div class="form-group" data-field="postproductor_id">
-            <label>POST-PRODUCTOR ASIGNADO</label>
-            <select class="form-control" id="form_postproductor_id">
-                <option value="">&#8212; Sin asignar &#8212;</option>
-                ${state.postproductores.map(pp => `<option value="${pp.id}" ${data.postproductor_id == pp.id ? "selected" : ""}>${escHtml(pp.nombre)}</option>`).join('')}
-            </select>
-        </div>`;
-    } else if (isPP && APP_PERMS.asignar_pp === 'self') {
-        html += `<div class="form-group" data-field="postproductor_id">
-            <label>POST-PRODUCTOR</label>
-            <button class="btn btn-sm ${data.postproductor_id == APP_USER.id ? 'btn-success' : 'btn-secondary'}"
-                    onclick="assignSelfPP()" id="btnAssignPP" style="display:flex; align-items:center; gap:6px; width:100%; justify-content:center;">
-                ${data.postproductor_id == APP_USER.id
-                    ? '<svg class="svg-icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> Asignado a mí'
-                    : '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="16 11 18 13 22 9"></polyline></svg> Asignarme esta pieza'}
-            </button>
-            <input type="hidden" id="form_postproductor_id" value="${data.postproductor_id || ''}">
-        </div>`;
-    } else {
-        const assignedPP = state.postproductores.find(pp => pp.id == data.postproductor_id);
-        const ppName = assignedPP ? assignedPP.nombre : 'Sin asignar';
-        html += `<div class="form-group">
-            <label>POST-PRODUCTOR ASIGNADO</label>
-            <input type="text" class="form-control" value="${escHtml(ppName)}" disabled style="background: rgba(0,0,0,0.1); cursor: not-allowed; border: 1px dashed var(--border-color); color: var(--text-muted); font-weight: bold;">
-            <input type="hidden" id="form_postproductor_id" value="${data.postproductor_id || ''}">
-        </div>`;
+        });
+        html += `</div>`;
     }
 
-    // Text fields (observaciones, etc.) spanning full width
-    textFields.forEach(c => html += renderField(c));
-    // NOTE: Ajustes/Notas lives only in column 3 of the 3-col layout below — do NOT add it here
-    html += `</div></div>`; // Close editor-grid & editor-section
+    html += `</div>`; // close ZONE 1
 
-    // ── 3-COLUMN STRATEGIC LAYOUT ──────────────────────────────────────────
-    // COL 1: Referencia Visual  |  COL 2: Links + Drive + PP  |  COL 3: Ajustes/Notas
-    html += `<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px; margin-bottom:16px; align-items:stretch;">`;
+    // ══════════════════════════════════════════════════════════════════════
+    // ZONE 2 — MAIN WORKSPACE: LEFT SIDEBAR (35%) + RIGHT CONTENT (65%)
+    // ══════════════════════════════════════════════════════════════════════
+    html += `<div style="display:grid; grid-template-columns: 280px 1fr; gap:16px; margin-bottom:14px; align-items:start;">`;
 
-    // ── COL 1: Referencia Visual ──
-    html += `<div style="display:flex; flex-direction:column;">
-        <div class="editor-section-title" style="margin-bottom:8px;"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> Referencia Visual</div>
-        <div id="imagePreviewArea" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">
+    // ── LEFT SIDEBAR ──────────────────────────────────────────────────────
+    html += `<div style="display:flex; flex-direction:column; gap:12px; position:sticky; top:0; align-self:start;">`;
+
+
+    // 📷 Referencia Visual
+    const currentPestana = state.pestanas.find(p => p.slug === (state.modalTab || state.currentTab));
+    const driveMadre = currentPestana?.enlace_carpeta_base || '';
+    html += `<div style="background:var(--bg-glass); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px;">
+        <div class="editor-section-title" style="margin-bottom:8px; font-size:0.72rem;">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            Referencia Visual
+        </div>
+        <div id="imagePreviewArea" style="display:flex; gap:5px; flex-wrap:wrap; margin-bottom:6px;">
             ${(data.imagenes_ref || []).map(img => `
                 <div style="position:relative; display:inline-block;">
-                    <img src="${img.url}" style="width:60px; height:60px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color); display:block; cursor:pointer; transition: transform 0.2s;" alt="ref" onclick="openLightbox('${img.url}')" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    <button onclick="deleteReferenciaVisual(${img.id})" title="Eliminar" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">×</button>
+                    <img src="${img.url}" style="width:52px; height:52px; object-fit:cover; border-radius:5px; border:1px solid var(--border-color); cursor:pointer;"
+                         alt="ref" onclick="openLightbox('${img.url}')" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+                    <button onclick="deleteReferenciaVisual(${img.id})" style="position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
                 </div>
             `).join('')}
         </div>
-        ${isPP ? `
-        <div id="imageDropZone" style="border:2px dashed var(--border-color); border-radius:var(--radius-md); padding:12px; text-align:center; flex:1; min-height:110px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:default; opacity:0.5; pointer-events:none;">
-            <svg class="svg-icon" style="width:1.8rem;height:1.8rem;stroke-width:1; color:var(--text-muted); margin-bottom:4px;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-            <div style="font-size:0.7rem; color:var(--text-muted);">Sin referencia visual</div>
-        </div>` : `
-        <div id="imageDropZone" style="border:2px dashed var(--border-color); border-radius:var(--radius-md); padding:12px; text-align:center; cursor:pointer; transition:var(--transition); flex:1; min-height:110px; display:flex; flex-direction:column; align-items:center; justify-content:center;"
+        ${isPP ? `<div id="imageDropZone" style="border:2px dashed var(--border-color); border-radius:6px; padding:10px; text-align:center; opacity:0.4; min-height:70px; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+            <div style="font-size:0.68rem; color:var(--text-muted);">Sin acceso</div>
+        </div>` : `<div id="imageDropZone" 
+             style="border:2px dashed var(--border-color); border-radius:6px; padding:10px; text-align:center; cursor:pointer; min-height:70px; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:border-color 0.15s, background 0.15s;"
              onclick="document.getElementById('imageFileInput').click()"
-             ondragover="event.preventDefault(); this.style.borderColor='var(--accent)';"
-             ondragleave="this.style.borderColor='var(--border-color)';"
+             ondragover="event.preventDefault(); this.style.borderColor='var(--accent)'; this.style.background='var(--bg-glass-hover)';"
+             ondragleave="this.style.borderColor='var(--border-color)'; this.style.background='';"
              ondrop="handleImageDropDashboard(event)"
              onmouseenter="window._hoveredZone = 'referencia'"
              onmouseleave="window._hoveredZone = 'captura'">
-            <svg class="svg-icon" style="width:1.8rem;height:1.8rem;stroke-width:1; color:var(--text-muted); margin-bottom:4px;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-            <div style="font-size:0.72rem; color:var(--text-muted);">Click para subir</div>
-            <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;"><strong>Ctrl+V</strong> para pegar</div>
+            <svg class="svg-icon" style="width:1.4rem;height:1.4rem; color:var(--text-muted); margin-bottom:3px;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            <div style="font-size:0.68rem; color:var(--text-muted);">Click o arrastra · <strong>Ctrl+V</strong></div>
             <input type="file" id="imageFileInput" accept="image/*" style="display:none" onchange="handleImageFileUpload(event)">
         </div>`}
     </div>`;
 
-    // ── COL 2: Links + Drive + PP Button ──
-    const currentPestana = state.pestanas.find(p => p.slug === (state.modalTab || state.currentTab));
-    const driveMadre = currentPestana?.enlace_carpeta_base || '';
-    html += `<div style="display:flex; flex-direction:column; gap:10px;">
-        <div class="editor-section-title" style="margin-bottom:0;"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> Links</div>
-        <div>
-            <label style="font-size:0.72rem; color:var(--text-muted); margin-bottom:3px; display:block;">Drive Madre</label>
-            <a href="${escHtml(driveMadre) || '#'}" target="_blank" class="btn btn-secondary"
-               style="display:flex; align-items:center; gap:6px; padding:6px 10px; white-space:nowrap; text-decoration:none; width:100%; justify-content:center; font-size:0.8rem;"
-               ${!driveMadre ? 'onclick="event.preventDefault(); showNoLinkAlert()"' : ''}>
-                <svg class="svg-icon" viewBox="0 0 24 24" style="width:13px;height:13px;color:#34a853;"><path d="M4.585 18l2.97-5.143H22.51l-2.97 5.143H4.585zM2.8 14.857L10.371 1.714h5.943l-7.57 13.143H2.8zM12.115 1.714L21.43 18H15.486L6.17 1.714h5.943z"></path></svg>
-                Google Drive Madre
-            </a>
-            <input type="hidden" id="form_enlace_contenido" value="${escHtml(data.enlace_contenido || '')}">
+    // 🔗 Links de producción
+    html += `<div style="background:var(--bg-glass); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px; display:flex; flex-direction:column; gap:8px;">
+        <div class="editor-section-title" style="margin-bottom:0; font-size:0.72rem;">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+            Recursos
         </div>
+        <a href="${escHtml(driveMadre) || '#'}" target="_blank"
+           style="display:flex; align-items:center; gap:6px; padding:7px 10px; background:rgba(52,168,83,0.08); border:1px solid rgba(52,168,83,0.25); border-radius:6px; text-decoration:none; font-size:0.78rem; font-weight:500; color:var(--text-primary); transition:background 0.15s;"
+           ${!driveMadre ? 'onclick="event.preventDefault(); showNoLinkAlert()"' : ''}
+           onmouseover="this.style.background='rgba(52,168,83,0.15)'" onmouseout="this.style.background='rgba(52,168,83,0.08)'">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#34a853;flex-shrink:0;"><path d="M4.585 18l2.97-5.143H22.51l-2.97 5.143H4.585zM2.8 14.857L10.371 1.714h5.943l-7.57 13.143H2.8zM12.115 1.714L21.43 18H15.486L6.17 1.714h5.943z"></path></svg>
+            Drive Madre
+        </a>
+        <input type="hidden" id="form_enlace_contenido" value="${escHtml(data.enlace_contenido || '')}">
         <div>
-            <label style="font-size:0.72rem; color:var(--text-muted); margin-bottom:3px; display:block;">Diseño Terminado</label>
-            <div style="display:flex; gap:6px;">
-                <div style="position:relative; flex:1;">
-                    <svg class="svg-icon" style="position:absolute; left:8px; top:50%; transform:translateY(-50%); width:12px; height:12px; color:var(--text-muted);" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                    <input type="url" id="form_enlace_diseno" class="form-control" style="padding-left:28px; font-size:0.78rem;" value="${escHtml(data.enlace_diseno || '')}" placeholder="https://drive.google.com/..." oninput="document.getElementById('btn_open_enlace_diseno').href = this.value || '#'; document.getElementById('btn_open_enlace_diseno').onclick = this.value ? null : function(e){e.preventDefault();showNoLinkAlert();}">
-                </div>
-                <a href="${escHtml(data.enlace_diseno || '#')}" target="_blank" id="btn_open_enlace_diseno" class="btn btn-secondary" style="display:flex; align-items:center; justify-content:center; padding:6px 8px; text-decoration:none;" title="Abrir Link" ${!data.enlace_diseno ? 'onclick="event.preventDefault(); showNoLinkAlert()"' : ''}>
-                    <svg class="svg-icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            <label style="font-size:0.65rem; color:var(--text-muted); display:block; margin-bottom:3px;">DISEÑO TERMINADO</label>
+            <div style="display:flex; gap:5px;">
+                <input type="url" id="form_enlace_diseno" class="form-control" 
+                       style="font-size:0.78rem; padding:5px 8px; flex:1; min-width:0;"
+                       value="${escHtml(data.enlace_diseno || '')}" placeholder="https://drive.google.com/..."
+                       oninput="document.getElementById('btn_open_enlace_diseno').href = this.value || '#';">
+                <a href="${escHtml(data.enlace_diseno || '#')}" target="_blank" id="btn_open_enlace_diseno"
+                   class="btn btn-secondary" style="padding:5px 8px; display:flex; align-items:center; flex-shrink:0;" 
+                   ${!data.enlace_diseno ? 'onclick="event.preventDefault(); showNoLinkAlert()"' : ''}>
+                    <svg class="svg-icon" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                 </a>
             </div>
         </div>
         ${(() => {
             const otherLinks = linkFields.filter(c => c.nombre_campo !== 'enlace_contenido' && c.nombre_campo !== 'enlace_diseno');
-            return otherLinks.map(c => renderField(c)).join('');
+            return otherLinks.map(c => {
+                const v = data[c.nombre_campo] || '';
+                return `<div>
+                    <label style="font-size:0.65rem; color:var(--text-muted); display:block; margin-bottom:3px;">${escHtml(c.nombre_display).toUpperCase()}</label>
+                    <div style="display:flex; gap:5px;">
+                        <input type="url" id="form_${c.nombre_campo}" class="form-control" style="font-size:0.78rem; padding:5px 8px;" value="${escHtml(v)}" placeholder="https://...">
+                        ${v ? `<a href="${escHtml(v)}" target="_blank" class="btn btn-secondary" style="padding:5px 8px; display:flex; align-items:center;"><svg class="svg-icon" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
         })()}
-        ${!isPP ? `<label style="display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:var(--radius-md); background:var(--bg-glass); border:1px solid var(--border-color); cursor:pointer; margin-top:auto;">
-            <input type="checkbox" id="form_enviar_postproduccion" ${data.enviar_postproduccion == 1 ? "checked" : ''} style="width:16px;height:16px; cursor:pointer; accent-color:var(--accent); flex-shrink:0;">
-            <span style="font-size:0.75rem; font-weight:600; cursor:pointer; color:var(--text-primary); display:flex; align-items:center; gap:5px; text-transform:uppercase; letter-spacing:0.3px;"><svg class="svg-icon" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Mandar a Post-Producción</span>
-        </label>` : ''}
     </div>`;
 
-    // ── COL 3: Ajustes / Notas ──
-    html += `<div style="display:flex; flex-direction:column;">
-        <div class="editor-section-title" style="margin-bottom:8px;"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Ajustes / Notas</div>
-        ${data.detalle?.ajustes ? `<div style="flex:1; overflow-y:auto; font-size:0.75rem; background:var(--bg-glass-hover); padding:8px 10px; border-radius:6px; border:1px solid var(--border-color); white-space:pre-wrap; margin-bottom:8px; line-height:1.5; max-height:130px;">${escHtml(data.detalle.ajustes)}</div>` : `<div style="flex:1; font-size:0.72rem; color:var(--text-muted); font-style:italic; padding:8px 0; margin-bottom:8px;">Sin ajustes registrados aún.</div>`}
-        <textarea class="form-control" id="form_nuevo_ajuste" rows="3" placeholder="Agregar ajuste o nota (se registrará con fecha y hora automáticamente)..." style="font-size:0.8rem; resize:none; flex:0 0 auto;"></textarea>
+    // 👤 Post-producción block
+    html += `<div style="background:var(--bg-glass); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px; display:flex; flex-direction:column; gap:8px;">
+        <div class="editor-section-title" style="margin-bottom:0; font-size:0.72rem;">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Post-Producción
+        </div>`;
+    if (APP_PERMS.asignar_pp || APP_USER.rol === 'admin') {
+        html += `<div>
+            <label style="font-size:0.65rem; color:var(--text-muted); display:block; margin-bottom:3px;">ASIGNAR POST-PRODUCTOR</label>
+            <select class="form-control" id="form_postproductor_id" style="font-size:0.82rem; padding:5px 8px;">
+                <option value="">— Sin asignar —</option>
+                ${state.postproductores.map(pp => `<option value="${pp.id}" ${data.postproductor_id == pp.id ? 'selected':''}>${escHtml(pp.nombre)}</option>`).join('')}
+            </select>
+        </div>`;
+    } else if (isPP && APP_PERMS.asignar_pp === 'self') {
+        html += `<button class="btn btn-sm ${data.postproductor_id == APP_USER.id ? 'btn-success' : 'btn-secondary'}"
+                onclick="assignSelfPP()" id="btnAssignPP" style="width:100%;">
+            ${data.postproductor_id == APP_USER.id ? 'Asignado a mí ✓' : 'Asignarme esta pieza'}
+        </button>
+        <input type="hidden" id="form_postproductor_id" value="${data.postproductor_id || ''}">`;
+    } else {
+        const assignedPP = state.postproductores.find(pp => pp.id == data.postproductor_id);
+        html += `<div style="font-size:0.82rem; padding:5px 0; color:var(--text-muted);">${assignedPP ? escHtml(assignedPP.nombre) : 'Sin asignar'}</div>
+        <input type="hidden" id="form_postproductor_id" value="${data.postproductor_id || ''}">`;
+    }
+    if (!isPP) {
+        html += `<label style="display:flex; align-items:center; gap:7px; padding:8px 10px; border-radius:6px; background:var(--bg-glass-hover); border:1px solid var(--border-color); cursor:pointer;">
+            <input type="checkbox" id="form_enviar_postproduccion" ${data.enviar_postproduccion == 1 ? 'checked':''} 
+                   style="width:15px;height:15px; accent-color:var(--accent); flex-shrink:0; cursor:pointer;">
+            <span style="font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.3px;">
+                <svg class="svg-icon" viewBox="0 0 24 24" style="width:12px;height:12px; margin-right:3px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                Enviar a PP
+            </span>
+        </label>`;
+    }
+    html += `</div>`; // close PP block
+
+    // ✏️ Ajustes / Notas
+    html += `<div style="background:var(--bg-glass); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px; display:flex; flex-direction:column; gap:6px;">
+        <div class="editor-section-title" style="margin-bottom:0; font-size:0.72rem;">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+            Ajustes / Notas
+        </div>
+        ${data.detalle?.ajustes 
+            ? `<div style="max-height:100px; overflow-y:auto; font-size:0.72rem; background:var(--bg-glass-hover); padding:7px 9px; border-radius:5px; border:1px solid var(--border-color); white-space:pre-wrap; line-height:1.45;">${escHtml(data.detalle.ajustes)}</div>` 
+            : `<div style="font-size:0.7rem; color:var(--text-muted); font-style:italic;">Sin ajustes registrados.</div>`}
+        <textarea class="form-control" id="form_nuevo_ajuste" rows="2"
+                  placeholder="Nuevo ajuste (se registra con fecha y hora)..."
+                  style="font-size:0.78rem; resize:none; padding:6px 8px;"></textarea>
         <input type="hidden" id="form_ajustes_actuales" value="${escHtml(data.detalle?.ajustes || '')}">
     </div>`;
 
-    html += `</div>`;  // Close 3-column grid
+    html += `</div>`; // close LEFT SIDEBAR
 
-    html += `</div>`;  // Close 2-col split
-    html += `</div></div>`;  // Close RIGHT COLUMN and 2-col split
+    // ── RIGHT COLUMN: COPY / SLIDES (sticky sidebar pattern) ─────────────
+    html += `<div style="min-width:0;">`;  // right col — grows with slides
 
-
-    // ── Slides/Guión section ──
-    const isVideo = (data.formato || '').toLowerCase().includes('video') || (data.formato || '').toLowerCase().includes('reel');
-    const sectionLabel = isVideo 
-        ? '<svg class="svg-icon" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg> Guión del Video' 
+    const isVideo = (data.formato_pieza || data.formato || '').toLowerCase().includes('video') || (data.formato_pieza || data.formato || '').toLowerCase().includes('reel');
+    const sectionLabel = isVideo
+        ? '<svg class="svg-icon" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg> Guión del Video'
         : '<svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg> COPY';
     const itemLabel = isVideo ? 'Escena' : 'Slide';
-    const addLabel = isVideo ? '+ Agregar Escena' : '+ Agregar Slide';
-    
-    html += `<div class="editor-section" data-is-video="${isVideo}" style="margin-top: 20px;">
+    const addLabel  = isVideo ? '+ Agregar Escena' : '+ Agregar Slide';
+
+    html += `<div class="editor-section" data-is-video="${isVideo}" style="margin-bottom:0;">
         <div class="editor-section-title">${sectionLabel}${isVideo ? ' <span id="totalDuration" style="font-size:0.75rem;color:var(--text-accent);font-weight:400;text-transform:none;letter-spacing:0;"></span>' : ''}</div>
         <div id="slidesContainer" data-item-label="${itemLabel}">`;
-    
+
     const slides = data.slides || [];
-    
-    // Migración: si no hay slides, usar el antiguo copy en el primer slide
     if (slides.length === 0 && !isVideo) {
         const legacyCopy = data.detalle?.copy_facebook || data.detalle?.copy_instagram || data.detalle?.copy_tiktok || data.detalle?.copy_linkedin || '';
-        if (legacyCopy) {
-            slides.push({ texto: legacyCopy, notas: '' });
-        }
+        if (legacyCopy) slides.push({ texto: legacyCopy, notas: '' });
     }
-
     slides.forEach((slide, i) => {
         html += renderSlideItem(i, slide.texto || '', slide.notas || '', isVideo, isPP);
     });
 
     html += `</div>`;
-    
     if (!isPP) {
         html += `<button class="add-slide-btn" onclick="addSlide()">${addLabel}</button>`;
     }
-    html += `</div>`;
+    html += `</div>`; // close editor-section for slides
 
-    // ── Copy section ──
+    html += `</div>`; // close RIGHT COLUMN
+    html += `</div>`; // close ZONE 2 (2-col grid: sidebar + right)
+
+    // ══════════════════════════════════════════════════════════════════════
+
+
+
+    // ══════════════════════════════════════════════════════════════════════
+    // ZONE 3 — BOTTOM: HEADLINE + CAPTURA side by side
+    // ══════════════════════════════════════════════════════════════════════
+    const hasCapturaPerms = APP_PERMS.registrar_metricas || APP_USER.rol === 'admin';
+    const capturaUrl = data.captura || '';
+
+    // Headline section
     if (!isPP) {
-        html += `<div class="editor-section">
+        html += `<div class="editor-section" style="margin-top:14px;">
             <div class="editor-section-title">HEADLINE</div>
-            
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
                 <div class="copy-section" id="boxCopyFB" style="margin-bottom:0; display:none;">
                     <div class="copy-header">
@@ -1255,7 +1301,6 @@ function renderContentForm(data) {
                     </div>
                     <textarea class="form-control" id="formCopyFB" rows="3" spellcheck="true" lang="es" placeholder="Copy para Facebook...">${escHtml(data.detalle?.copy_facebook || '')}</textarea>
                 </div>
-                
                 <div class="copy-section" id="boxCopyIG" style="margin-bottom:0; display:none;">
                     <div class="copy-header">
                         <div class="copy-label"><span class="social-icon" style="color:#E1306C;">${getSocialSvg('instagram')}</span> Instagram</div>
@@ -1263,7 +1308,6 @@ function renderContentForm(data) {
                     </div>
                     <textarea class="form-control" id="formCopyIG" rows="3" spellcheck="true" lang="es" placeholder="Copy para Instagram...">${escHtml(data.detalle?.copy_instagram || '')}</textarea>
                 </div>
-                
                 <div class="copy-section" id="boxCopyTT" style="margin-bottom:0; display:none;">
                     <div class="copy-header">
                         <div class="copy-label"><span class="social-icon" style="color:var(--text-color);">${getSocialSvg('tiktok')}</span> TikTok</div>
@@ -1271,7 +1315,6 @@ function renderContentForm(data) {
                     </div>
                     <textarea class="form-control" id="formCopyTT" rows="3" spellcheck="true" lang="es" placeholder="Copy para TikTok...">${escHtml(data.detalle?.copy_tiktok || '')}</textarea>
                 </div>
-                
                 <div class="copy-section" id="boxCopyLI" style="margin-bottom:0; display:none;">
                     <div class="copy-header">
                         <div class="copy-label"><span class="social-icon" style="color:#0077b5;">${getSocialSvg('linkedin')}</span> LinkedIn</div>
@@ -1280,9 +1323,9 @@ function renderContentForm(data) {
                     <textarea class="form-control" id="formCopyLI" rows="3" spellcheck="true" lang="es" placeholder="Copy para LinkedIn...">${escHtml(data.detalle?.copy_linkedin || '')}</textarea>
                 </div>
             </div>
-            
         </div>`;
     }
+
 
     // ── Captura del Post (always visible for admin/community) ──
     if (APP_PERMS.registrar_metricas || APP_USER.rol === 'admin') {
