@@ -973,12 +973,12 @@ function renderContentForm(data) {
         { nombre_campo: 'pilar',         nombre_display: 'TIPO PIEZA',        tipo_campo: 'dropdown', dropdown_grupo: 'pilar',      ancho: '160px' },
         { nombre_campo: 'red_social',    nombre_display: 'RED SOCIAL',        tipo_campo: 'dropdown', dropdown_grupo: 'red_social', ancho: '160px' },
         { nombre_campo: 'estado',        nombre_display: 'ESTADO',            tipo_campo: 'dropdown', dropdown_grupo: 'estado',     ancho: '160px' },
-        { nombre_campo: 'prioridad',     nombre_display: 'PRIORIDAD',         tipo_campo: 'dropdown', dropdown_grupo: 'prioridad',  ancho: '120px' },
         { nombre_campo: 'formato_pieza', nombre_display: 'FORMATO',           tipo_campo: 'texto',    ancho: '120px' },
         { nombre_campo: 'ubicaciones',   nombre_display: 'UBICACIONES',       tipo_campo: 'texto',    ancho: '160px' },
     ];
     const STANDARD_NAMES = new Set(STANDARD_CAMPOS.map(c => c.nombre_campo));
-    const HIDDEN_CAMPOS = new Set(['funnel', 'emocion', 'creencia', 'atributo', 'serie editorial', 'horario']);
+    // These DB campos are hidden regardless of name — removes duplicates and legacy fields
+    const HIDDEN_CAMPOS = new Set(['funnel', 'emocion', 'creencia', 'atributo', 'serie editorial', 'horario', 'aspecto', 'prioridad']);
 
     // Merge: standard first, then any extra tab-specific campos from DB
     const dbCampos = (state.campos[state.modalTab] || []).filter(c =>
@@ -1121,17 +1121,7 @@ function renderContentForm(data) {
 
     // Text fields (observaciones, etc.) spanning full width
     textFields.forEach(c => html += renderField(c));
-    
-    // Ajustes section
-    html += `<div class="editor-section" style="grid-column: 1 / -1; margin-top: 10px;">
-        <div class="editor-section-title"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Ajustes / Notas</div>
-        ${data.detalle?.ajustes ? `<div style="max-height:120px; overflow-y:auto; font-size:0.8rem; background:var(--bg-glass-hover); padding:10px; border-radius:6px; border:1px solid var(--border-color); white-space:pre-wrap; margin-bottom:8px; line-height:1.4;">${escHtml(data.detalle.ajustes)}</div>` : ''}
-        <textarea class="form-control" id="form_nuevo_ajuste" rows="2" placeholder="Agregar nuevo ajuste o nota (se registrará con fecha y hora)..." style="font-size:0.85rem; resize:vertical;"></textarea>
-        <input type="hidden" id="form_ajustes_actuales" value="${escHtml(data.detalle?.ajustes || '')}">
-    </div>`;
-
-
-
+    // NOTE: Ajustes/Notas lives only in column 3 of the 3-col layout below — do NOT add it here
     html += `</div></div>`; // Close editor-grid & editor-section
 
     // ── 3-COLUMN STRATEGIC LAYOUT ──────────────────────────────────────────
