@@ -1134,90 +1134,90 @@ function renderContentForm(data) {
 
     html += `</div></div>`; // Close editor-grid & editor-section
 
-    // ── 2x1 HORIZONTAL BOX (Referencia Visual + Links) ──
-    html += `<div style="display:flex; gap:20px; align-items:stretch; margin-bottom:16px;">`;
+    // ── 3-COLUMN STRATEGIC LAYOUT ──────────────────────────────────────────
+    // COL 1: Referencia Visual  |  COL 2: Links + Drive + PP  |  COL 3: Ajustes/Notas
+    html += `<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px; margin-bottom:16px; align-items:stretch;">`;
 
-    // LEFT HALF: Image Panel
-    html += `<div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+    // ── COL 1: Referencia Visual ──
+    html += `<div style="display:flex; flex-direction:column;">
         <div class="editor-section-title" style="margin-bottom:8px;"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> Referencia Visual</div>
-        <div id="imagePreviewArea" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+        <div id="imagePreviewArea" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">
             ${(data.imagenes_ref || []).map(img => `
                 <div style="position:relative; display:inline-block;">
-                    <img src="${img.url}" style="width:72px; height:72px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color); display:block; cursor:pointer; transition: transform 0.2s;" alt="ref" onclick="openLightbox('${img.url}')" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    <img src="${img.url}" style="width:60px; height:60px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color); display:block; cursor:pointer; transition: transform 0.2s;" alt="ref" onclick="openLightbox('${img.url}')" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                     <button onclick="deleteReferenciaVisual(${img.id})" title="Eliminar" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">×</button>
                 </div>
             `).join('')}
         </div>
         ${isPP ? `
-        <div id="imageDropZone" style="border:2px dashed var(--border-color); border-radius:var(--radius-md); padding:16px; text-align:center; flex:1; min-height:140px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:default; opacity:0.5; pointer-events:none;">
-            <svg class="svg-icon" style="width:2rem;height:2rem;stroke-width:1; color:var(--text-muted); margin-bottom:6px;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-            <div style="font-size:0.75rem; color:var(--text-muted);">Sin referencia visual</div>
+        <div id="imageDropZone" style="border:2px dashed var(--border-color); border-radius:var(--radius-md); padding:12px; text-align:center; flex:1; min-height:110px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:default; opacity:0.5; pointer-events:none;">
+            <svg class="svg-icon" style="width:1.8rem;height:1.8rem;stroke-width:1; color:var(--text-muted); margin-bottom:4px;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            <div style="font-size:0.7rem; color:var(--text-muted);">Sin referencia visual</div>
         </div>` : `
-        <div id="imageDropZone" style="border:2px dashed var(--border-color); border-radius:var(--radius-md); padding:16px; text-align:center; cursor:pointer; transition:var(--transition); flex:1; min-height:140px; display:flex; flex-direction:column; align-items:center; justify-content:center;"
+        <div id="imageDropZone" style="border:2px dashed var(--border-color); border-radius:var(--radius-md); padding:12px; text-align:center; cursor:pointer; transition:var(--transition); flex:1; min-height:110px; display:flex; flex-direction:column; align-items:center; justify-content:center;"
              onclick="document.getElementById('imageFileInput').click()"
              ondragover="event.preventDefault(); this.style.borderColor='var(--accent)';"
              ondragleave="this.style.borderColor='var(--border-color)';"
              ondrop="handleImageDropDashboard(event)"
              onmouseenter="window._hoveredZone = 'referencia'"
              onmouseleave="window._hoveredZone = 'captura'">
-            <svg class="svg-icon" style="width:2rem;height:2rem;stroke-width:1; color:var(--text-muted); margin-bottom:6px;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-            <div style="font-size:0.75rem; color:var(--text-muted);">Click para subir</div>
-            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:3px;"><strong>Ctrl+V</strong> para pegar</div>
+            <svg class="svg-icon" style="width:1.8rem;height:1.8rem;stroke-width:1; color:var(--text-muted); margin-bottom:4px;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            <div style="font-size:0.72rem; color:var(--text-muted);">Click para subir</div>
+            <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;"><strong>Ctrl+V</strong> para pegar</div>
             <input type="file" id="imageFileInput" accept="image/*" style="display:none" onchange="handleImageFileUpload(event)">
         </div>`}
     </div>`;
 
-    // RIGHT HALF: Links + PP Checkbox
-    html += `<div style="flex:1; display:flex; flex-direction:column; justify-content:space-between; min-width:0;">`;
-    html += `<div style="display:flex; flex-direction:column; gap:12px;">`;
-    
-    // Google Drive Madre — link from the current tab's enlace_carpeta_base
+    // ── COL 2: Links + Drive + PP Button ──
     const currentPestana = state.pestanas.find(p => p.slug === (state.modalTab || state.currentTab));
     const driveMadre = currentPestana?.enlace_carpeta_base || '';
-    html += `<div>
-        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">Drive Madre</label>
-        <a href="${escHtml(driveMadre) || '#'}" target="_blank" class="btn btn-secondary"
-           style="display:flex; align-items:center; gap:6px; padding:6px 12px; white-space:nowrap; text-decoration:none; width:100%; justify-content:center;"
-           ${!driveMadre ? 'onclick="event.preventDefault(); showNoLinkAlert()"' : ''}>
-            <svg class="svg-icon" viewBox="0 0 24 24" style="width:14px;height:14px;color:#34a853;"><path d="M4.585 18l2.97-5.143H22.51l-2.97 5.143H4.585zM2.8 14.857L10.371 1.714h5.943l-7.57 13.143H2.8zM12.115 1.714L21.43 18H15.486L6.17 1.714h5.943z"></path></svg>
-            Google Drive Madre
-        </a>
-        <input type="hidden" id="form_enlace_contenido" value="${escHtml(data.enlace_contenido || '')}">
-    </div>`;
-
-    // Diseño Terminado
-    html += `<div>
-        <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; display:block;">Link del Diseño Terminado</label>
-        <div style="display:flex; gap:8px;">
-            <div style="position:relative; flex:1;">
-                <svg class="svg-icon" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:var(--text-muted);" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                <input type="url" id="form_enlace_diseno" class="form-control" style="padding-left:32px; font-size:0.8rem;" value="${escHtml(data.enlace_diseno || '')}" placeholder="https://drive.google.com/..." oninput="document.getElementById('btn_open_enlace_diseno').href = this.value || '#'; document.getElementById('btn_open_enlace_diseno').onclick = this.value ? null : function(e){e.preventDefault();showNoLinkAlert();}">
-            </div>
-            <a href="${escHtml(data.enlace_diseno || '#')}" target="_blank" id="btn_open_enlace_diseno" class="btn btn-secondary" style="display:flex; align-items:center; justify-content:center; padding:6px; text-decoration:none;" title="Abrir Link" ${!data.enlace_diseno ? 'onclick="event.preventDefault(); showNoLinkAlert()"' : ''}>
-                <svg class="svg-icon" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+    html += `<div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="editor-section-title" style="margin-bottom:0;"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> Links</div>
+        <div>
+            <label style="font-size:0.72rem; color:var(--text-muted); margin-bottom:3px; display:block;">Drive Madre</label>
+            <a href="${escHtml(driveMadre) || '#'}" target="_blank" class="btn btn-secondary"
+               style="display:flex; align-items:center; gap:6px; padding:6px 10px; white-space:nowrap; text-decoration:none; width:100%; justify-content:center; font-size:0.8rem;"
+               ${!driveMadre ? 'onclick="event.preventDefault(); showNoLinkAlert()"' : ''}>
+                <svg class="svg-icon" viewBox="0 0 24 24" style="width:13px;height:13px;color:#34a853;"><path d="M4.585 18l2.97-5.143H22.51l-2.97 5.143H4.585zM2.8 14.857L10.371 1.714h5.943l-7.57 13.143H2.8zM12.115 1.714L21.43 18H15.486L6.17 1.714h5.943z"></path></svg>
+                Google Drive Madre
             </a>
+            <input type="hidden" id="form_enlace_contenido" value="${escHtml(data.enlace_contenido || '')}">
         </div>
+        <div>
+            <label style="font-size:0.72rem; color:var(--text-muted); margin-bottom:3px; display:block;">Diseño Terminado</label>
+            <div style="display:flex; gap:6px;">
+                <div style="position:relative; flex:1;">
+                    <svg class="svg-icon" style="position:absolute; left:8px; top:50%; transform:translateY(-50%); width:12px; height:12px; color:var(--text-muted);" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                    <input type="url" id="form_enlace_diseno" class="form-control" style="padding-left:28px; font-size:0.78rem;" value="${escHtml(data.enlace_diseno || '')}" placeholder="https://drive.google.com/..." oninput="document.getElementById('btn_open_enlace_diseno').href = this.value || '#'; document.getElementById('btn_open_enlace_diseno').onclick = this.value ? null : function(e){e.preventDefault();showNoLinkAlert();}">
+                </div>
+                <a href="${escHtml(data.enlace_diseno || '#')}" target="_blank" id="btn_open_enlace_diseno" class="btn btn-secondary" style="display:flex; align-items:center; justify-content:center; padding:6px 8px; text-decoration:none;" title="Abrir Link" ${!data.enlace_diseno ? 'onclick="event.preventDefault(); showNoLinkAlert()"' : ''}>
+                    <svg class="svg-icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </a>
+            </div>
+        </div>
+        ${(() => {
+            const otherLinks = linkFields.filter(c => c.nombre_campo !== 'enlace_contenido' && c.nombre_campo !== 'enlace_diseno');
+            return otherLinks.map(c => renderField(c)).join('');
+        })()}
+        ${!isPP ? `<label style="display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:var(--radius-md); background:var(--bg-glass); border:1px solid var(--border-color); cursor:pointer; margin-top:auto;">
+            <input type="checkbox" id="form_enviar_postproduccion" ${data.enviar_postproduccion == 1 ? "checked" : ''} style="width:16px;height:16px; cursor:pointer; accent-color:var(--accent); flex-shrink:0;">
+            <span style="font-size:0.75rem; font-weight:600; cursor:pointer; color:var(--text-primary); display:flex; align-items:center; gap:5px; text-transform:uppercase; letter-spacing:0.3px;"><svg class="svg-icon" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Mandar a Post-Producción</span>
+        </label>` : ''}
     </div>`;
 
-    // Optionally render other configured links (like enlace_publicado)
-    const otherLinks = linkFields.filter(c => c.nombre_campo !== 'enlace_contenido' && c.nombre_campo !== 'enlace_diseno');
-    if (otherLinks.length > 0) {
-        otherLinks.forEach(c => html += renderField(c));
-    }
-    html += `</div>`;
+    // ── COL 3: Ajustes / Notas ──
+    html += `<div style="display:flex; flex-direction:column;">
+        <div class="editor-section-title" style="margin-bottom:8px;"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Ajustes / Notas</div>
+        ${data.detalle?.ajustes ? `<div style="flex:1; overflow-y:auto; font-size:0.75rem; background:var(--bg-glass-hover); padding:8px 10px; border-radius:6px; border:1px solid var(--border-color); white-space:pre-wrap; margin-bottom:8px; line-height:1.5; max-height:130px;">${escHtml(data.detalle.ajustes)}</div>` : `<div style="flex:1; font-size:0.72rem; color:var(--text-muted); font-style:italic; padding:8px 0; margin-bottom:8px;">Sin ajustes registrados aún.</div>`}
+        <textarea class="form-control" id="form_nuevo_ajuste" rows="3" placeholder="Agregar ajuste o nota (se registrará con fecha y hora automáticamente)..." style="font-size:0.8rem; resize:none; flex:0 0 auto;"></textarea>
+        <input type="hidden" id="form_ajustes_actuales" value="${escHtml(data.detalle?.ajustes || '')}">
+    </div>`;
 
-    // PP Checkbox at bottom
-    if (!isPP) {
-        html += `<label style="display:flex; align-items:center; gap:8px; padding:12px 14px; border-radius:var(--radius-md); background:var(--bg-glass); border:1px solid var(--border-color); cursor:pointer; margin-top:12px; margin-bottom:0;">
-            <input type="checkbox" id="form_enviar_postproduccion" ${data.enviar_postproduccion == 1 ? "checked" : ''} style="width:18px;height:18px; cursor:pointer; accent-color:var(--accent); flex-shrink:0;">
-            <span style="font-size:0.8rem; font-weight:600; cursor:pointer; color:var(--text-primary); display:flex; align-items:center; gap:6px; text-transform:uppercase; letter-spacing:0.3px;"><svg class="svg-icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> MANDAR A POST-PRODUCCION</span>
-        </label>`;
-    }
-    html += `</div>`;  // Close RIGHT HALF
+    html += `</div>`;  // Close 3-column grid
 
-    html += `</div>`;  // Close 2x1 HORIZONTAL BOX
     html += `</div>`;  // Close 2-col split
     html += `</div></div>`;  // Close RIGHT COLUMN and 2-col split
+
 
     // ── Slides/Guión section ──
     const isVideo = (data.formato || '').toLowerCase().includes('video') || (data.formato || '').toLowerCase().includes('reel');
