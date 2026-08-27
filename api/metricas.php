@@ -30,7 +30,7 @@ switch ($action) {
         if (!$cid || !$imgData) jsonResponse(['error' => 'Datos incompletos'], 400);
 
         $uploaded = _uploadBase64ToStorage($imgData, $cid, 'captura');
-        if (!$uploaded) jsonResponse(['error' => 'Error subiendo imagen a Storage'], 500);
+        if (!$uploaded) jsonResponse(['error' => 'Error subiendo imagen a Storage', 'debug' => $uploaded], 500);
 
         // Remove existing captura_post for this content
         sb_delete('contenido_imagenes', 'contenido_id=eq.' . $cid . '&tipo=eq.captura_post');
@@ -66,7 +66,7 @@ switch ($action) {
         if (!$cid || !$imgData) jsonResponse(['error' => 'Datos incompletos'], 400);
 
         $uploaded = _uploadBase64ToStorage($imgData, $cid, 'ref');
-        if (!$uploaded) jsonResponse(['error' => 'Error subiendo imagen a Storage'], 500);
+        if (!$uploaded) jsonResponse(['error' => 'Error subiendo imagen a Storage', 'debug' => $uploaded], 500);
 
         $res = sb_post('contenido_imagenes', [
             'contenido_id'   => $cid,

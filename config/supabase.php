@@ -91,19 +91,29 @@ function sb_storage_upload($bucket, $path, $fileData, $contentType = 'image/png'
         'Authorization: Bearer ' . SB_KEY,
         'Content-Type: ' . $contentType,
         'x-upsert: true',
+        'Content-Length: ' . strlen($fileData),
     ];
+    // Use a memory stream for binary upload — CURLOPT_POSTFIELDS corrupts binary data
+    $stream = fopen('php://temp', 'r+');
+    fwrite($stream, $fileData);
+    rewind($stream);
+
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CUSTOMREQUEST  => 'POST',
         CURLOPT_HTTPHEADER     => $headers,
-        CURLOPT_POSTFIELDS     => $fileData,
+        CURLOPT_UPLOAD         => true,
+        CURLOPT_INFILE         => $stream,
+        CURLOPT_INFILESIZE     => strlen($fileData),
         CURLOPT_TIMEOUT        => 30,
     ]);
     $res  = curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
     curl_close($ch);
-    return ['data' => json_decode($res, true), 'code' => $code];
+    fclose($stream);
+    return ['data' => json_decode($res, true), 'code' => $code, 'raw' => $res, 'err' => $err];
 }
 
 function sb_storage_delete($bucket, $paths) {
