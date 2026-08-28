@@ -933,7 +933,13 @@ function renderCalendar() {
 // —————————————————————————————————————————————————————————————————————————
 function openCreateModal() {
     state.editingId = null;
-    state.modalTab = state.currentTab;
+    // If in ALL view, use the first real tab as default
+    if (state.currentTab === 'all') {
+        const firstReal = state.pestanas.find(p => p.slug !== 'all');
+        state.modalTab = firstReal ? firstReal.slug : state.currentTab;
+    } else {
+        state.modalTab = state.currentTab;
+    }
     document.getElementById('modalTitle').textContent = 'Nuevo Contenido';
     
     let defaultData = {};
@@ -1675,7 +1681,12 @@ async function checkSpellingErrors(data) {
 // SAVE CONTENT
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function saveContent() {
-    const targetTab = state.modalTab || state.currentTab;
+    let targetTab = state.modalTab || state.currentTab;
+    // 'all' is a virtual tab — never send it to the API
+    if (targetTab === 'all') {
+        const firstReal = state.pestanas.find(p => p.slug !== 'all');
+        targetTab = firstReal ? firstReal.slug : '';
+    }
     // Always collect these standard fields (mirrors renderContentForm logic)
     const STANDARD_CAMPOS = [
         { nombre_campo: 'tema' }, { nombre_campo: 'fecha' }, { nombre_campo: 'buyer' },

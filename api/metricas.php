@@ -119,7 +119,7 @@ function _uploadBase64ToStorage($dataUrl, $contenidoId, $prefix = 'img') {
     $result = sb_storage_upload('imagenes', $path, $binary, $mime);
     if ($result['code'] < 200 || $result['code'] >= 300) {
         // Return result so callers can expose the real Supabase error
-        return ['__error' => true, 'code' => $result['code'], 'body' => $result['body'] ?? ''];
+        return ['__error' => true, 'code' => $result['code'], 'raw' => $result['raw'] ?? '', 'curl_err' => $result['err'] ?? ''];
     }
 
     return [
