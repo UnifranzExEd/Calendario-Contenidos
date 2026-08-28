@@ -959,7 +959,12 @@ async function openEditModal(id) {
         const res = await api('contenidos.php', { action: 'get', id });
         state.modalTab = res.data.pestana_slug; // Changed from state.currentTab so it doesn't break ALL view
         const isPP = false;
-        document.getElementById('modalTitle').textContent = 'Editar Contenido';
+        let subtitle = '';
+        if (res.data.historial && res.data.historial.length > 0) {
+            const lastLog = res.data.historial[0];
+            subtitle = `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:5px; font-weight:normal; display:flex; align-items:center; gap:5px;"><svg class="svg-icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Última edición por <b style="color:var(--text-color)">${escHtml(lastLog.usuario_nombre || 'Sistema')}</b> el ${formatDate(lastLog.created_at)}</div>`;
+        }
+        document.getElementById('modalTitle').innerHTML = 'Editar Contenido' + subtitle;
         
         renderContentForm(res.data);
         openModal('contentModal');
@@ -1247,6 +1252,25 @@ function renderContentForm(data) {
         </label>`;
     }
     html += `</div>`; // close PP block
+
+    // 🕒 Historial de Actividad (Small log window)
+    if (isEdit && data.historial && data.historial.length > 0) {
+        html += `<div style="background:var(--bg-glass); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px; display:flex; flex-direction:column; gap:6px;">
+            <div class="editor-section-title" style="margin-bottom:4px; font-size:0.72rem;">
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path></svg> Registro de Actividad
+            </div>
+            <div style="max-height:160px;overflow-y:auto; padding-right:4px;">
+                ${data.historial.map(h => `
+                    <div style="padding:8px 0; border-bottom:1px solid var(--border-color); font-size:0.7rem; line-height:1.4;">
+                        <span style="color:var(--text-muted); font-size:0.65rem;">${formatDate(h.created_at)}</span><br>
+                        <strong style="color:var(--text-color);">${escHtml(h.usuario_nombre || 'Sistema')}</strong> 
+                        cambió estado ${h.estado_anterior ? 'de <em style="color:var(--text-muted); font-style:normal; opacity:0.8;">' + escHtml(h.estado_anterior) + '</em>' : ''} 
+                        a <em style="color:var(--text-accent); font-style:normal; font-weight:600;">${escHtml(h.estado_nuevo)}</em>
+                    </div>
+                `).join('')}
+            </div>
+        </div>`;
+    }
 
     html += `</div>`; // close LEFT SIDEBAR
 
