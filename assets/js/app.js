@@ -1326,8 +1326,15 @@ function renderContentForm(data) {
     }
     html += `</div>`; // close editor-section for slides
 
-    // ✏️ Ajustes / Notas
-    html += `<div style="background:var(--bg-glass); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px; display:flex; flex-direction:column; gap:6px; margin-top:16px;">
+    html += `</div>`; // close RIGHT COLUMN
+    html += `</div>`; // close ZONE 2 (2-col grid: sidebar + right)
+
+    // ══════════════════════════════════════════════════════════════════════
+    // ZONE 3 — BOTTOM FULL WIDTH: Ajustes/Notas + Metrics
+    // ══════════════════════════════════════════════════════════════════════
+
+    // ✏️ Ajustes / Notas (Full width)
+    html += `<div style="background:var(--bg-glass); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px; display:flex; flex-direction:column; gap:6px; margin-bottom:14px;">
         <div class="editor-section-title" style="margin-bottom:0; font-size:0.72rem;">
             <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
             Ajustes / Notas
@@ -1341,14 +1348,6 @@ function renderContentForm(data) {
         <input type="hidden" id="form_ajustes_actuales" value="${escHtml(data.detalle?.ajustes || '')}">
     </div>`;
 
-    html += `</div>`; // close RIGHT COLUMN
-    html += `</div>`; // close ZONE 2 (2-col grid: sidebar + right)
-
-    // ══════════════════════════════════════════════════════════════════════
-
-
-
-    // ══════════════════════════════════════════════════════════════════════
     // ── Metrics section (only for community/admin on published content) ──
 
     // â”€â”€ Metrics section (only for community/admin on published content) â”€â”€
