@@ -1248,21 +1248,6 @@ function renderContentForm(data) {
     }
     html += `</div>`; // close PP block
 
-    // ✏️ Ajustes / Notas
-    html += `<div style="background:var(--bg-glass); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px; display:flex; flex-direction:column; gap:6px;">
-        <div class="editor-section-title" style="margin-bottom:0; font-size:0.72rem;">
-            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-            Ajustes / Notas
-        </div>
-        ${data.detalle?.ajustes 
-            ? `<div style="max-height:100px; overflow-y:auto; font-size:0.72rem; background:var(--bg-glass-hover); padding:7px 9px; border-radius:5px; border:1px solid var(--border-color); white-space:pre-wrap; line-height:1.45;">${escHtml(data.detalle.ajustes)}</div>` 
-            : `<div style="font-size:0.7rem; color:var(--text-muted); font-style:italic;">Sin ajustes registrados.</div>`}
-        <textarea class="form-control" id="form_nuevo_ajuste" rows="2"
-                  placeholder="Nuevo ajuste (se registra con fecha y hora)..."
-                  style="font-size:0.78rem; resize:none; padding:6px 8px;"></textarea>
-        <input type="hidden" id="form_ajustes_actuales" value="${escHtml(data.detalle?.ajustes || '')}">
-    </div>`;
-
     html += `</div>`; // close LEFT SIDEBAR
 
     // ── RIGHT COLUMN: COPY / SLIDES (sticky sidebar pattern) ─────────────
@@ -1293,6 +1278,21 @@ function renderContentForm(data) {
         html += `<button class="add-slide-btn" onclick="addSlide()">${addLabel}</button>`;
     }
     html += `</div>`; // close editor-section for slides
+
+    // ✏️ Ajustes / Notas
+    html += `<div style="background:var(--bg-glass); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px; display:flex; flex-direction:column; gap:6px; margin-top:16px;">
+        <div class="editor-section-title" style="margin-bottom:0; font-size:0.72rem;">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+            Ajustes / Notas
+        </div>
+        ${data.detalle?.ajustes 
+            ? `<div style="max-height:100px; overflow-y:auto; font-size:0.72rem; background:var(--bg-glass-hover); padding:7px 9px; border-radius:5px; border:1px solid var(--border-color); white-space:pre-wrap; line-height:1.45;">${escHtml(data.detalle.ajustes)}</div>` 
+            : `<div style="font-size:0.7rem; color:var(--text-muted); font-style:italic;">Sin ajustes registrados.</div>`}
+        <textarea class="form-control" id="form_nuevo_ajuste" rows="2"
+                  placeholder="Nuevo ajuste (se registra con fecha y hora)..."
+                  style="font-size:0.78rem; resize:none; padding:6px 8px;"></textarea>
+        <input type="hidden" id="form_ajustes_actuales" value="${escHtml(data.detalle?.ajustes || '')}">
+    </div>`;
 
     html += `</div>`; // close RIGHT COLUMN
     html += `</div>`; // close ZONE 2 (2-col grid: sidebar + right)
@@ -1340,14 +1340,21 @@ function renderContentForm(data) {
         </div>`;
     }
 
-    // Delete button for admin
-    if (isEdit && APP_USER.rol === 'admin') {
-        html += `<div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border-color);">
-            <button class="btn btn-danger btn-sm" onclick="deleteContent(${data.id})"><svg class="svg-icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Eliminar contenido</button>
-        </div>`;
+    // Remove the old inline delete button
+    document.getElementById('modalBody').innerHTML = html;
+    
+    // Setup modal footer
+    const modalFooter = document.getElementById('modalFooter');
+    if (modalFooter) {
+        let footerHtml = '';
+        if (isEdit && APP_USER.rol === 'admin') {
+            footerHtml += `<button class="btn btn-danger" onclick="deleteContent(${data.id})" style="margin-right:auto; padding:8px 14px; background:rgba(239,68,68,0.15); color:#fca5a5; border:1px solid rgba(239,68,68,0.3); display:flex; align-items:center; gap:6px;"><svg class="svg-icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Eliminar contenido</button>`;
+        }
+        footerHtml += `<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                       <button class="btn btn-primary" onclick="saveContent()" id="btnGuardarContenido" ${!canEdit ? 'style="display:none;"' : ''}>Guardar</button>`;
+        modalFooter.innerHTML = footerHtml;
     }
 
-    document.getElementById('modalBody').innerHTML = html;
     
     // Setup dynamic copy visibility based on red social select
     const redSocialSelect = document.getElementById('form_red_social');
