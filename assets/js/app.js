@@ -48,12 +48,21 @@ async function api(endpoint, params = {}) {
     const headers = {};
     if (token) headers['X-Auth-Token'] = token;
     const res = await fetch(url, { headers });
-    if (!res.ok) {
-        if (res.status === 401) { localStorage.removeItem('auth_token'); window.location.href = 'index.html'; return; }
-        const err = await res.json().catch(() => ({ error: 'Error del servidor' }));
-        throw new Error(err.error || 'Error');
+    if (res.status === 401) { localStorage.removeItem('auth_token'); window.location.href = 'index.html'; return; }
+    
+    const text = await res.text();
+    let json;
+    try {
+        json = JSON.parse(text);
+    } catch (e) {
+        console.error("API GET Parse Error:", text);
+        throw new Error(!res.ok ? `Error HTTP ${res.status}: ${text.substring(0,80)}...` : `Respuesta inválida del servidor: ${text.substring(0,80)}...`);
     }
-    return res.json();
+
+    if (!res.ok) {
+        throw new Error(json.error || `Error HTTP ${res.status}`);
+    }
+    return json;
 }
 
 async function apiPost(endpoint, data = {}) {
@@ -66,8 +75,17 @@ async function apiPost(endpoint, data = {}) {
         body: JSON.stringify(data)
     });
     if (res.status === 401) { localStorage.removeItem('auth_token'); window.location.href = 'index.html'; return; }
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Error');
+    
+    const text = await res.text();
+    let json;
+    try {
+        json = JSON.parse(text);
+    } catch (e) {
+        console.error("API POST Parse Error:", text);
+        throw new Error(!res.ok ? `Error HTTP ${res.status}: ${text.substring(0,80)}...` : `Respuesta inválida del servidor: ${text.substring(0,80)}...`);
+    }
+    
+    if (!res.ok) throw new Error(json.error || `Error HTTP ${res.status}`);
     return json;
 }
 
