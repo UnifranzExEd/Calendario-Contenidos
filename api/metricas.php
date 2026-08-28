@@ -108,19 +108,26 @@ switch ($action) {
 }
 
 // ─── Helper: decode base64 data URL and upload to Supabase Storage ────
+// Files are organized as: {year}/{MONTH}/{contenidoId}/{prefix}_{timestamp}.{ext}
+// Example: 2026/AGOSTO/255/ref_1787934000.webp
 function _uploadBase64ToStorage($dataUrl, $contenidoId, $prefix = 'img') {
     if (!preg_match('/^data:image\/(\w+);base64,(.+)$/', $dataUrl, $m)) return null;
-    $ext      = $m[1] === 'jpeg' ? 'jpg' : $m[1];
-    $binary   = base64_decode($m[2]);
+    $ext    = $m[1] === 'jpeg' ? 'jpg' : $m[1];
+    $binary = base64_decode($m[2]);
     if (!$binary) return null;
 
     $mimeMap = ['png'=>'image/png','jpg'=>'image/jpeg','gif'=>'image/gif','webp'=>'image/webp'];
     $mime    = $mimeMap[$ext] ?? 'image/png';
-    $path    = $contenidoId . '/' . $prefix . '_' . time() . '.' . $ext;
+
+    // ── Folder structure: year/MONTH/contenidoId/prefix_timestamp.ext ──
+    $meses = ['','ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
+              'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+    $year  = date('Y');
+    $month = $meses[(int)date('n')];   // e.g. "AGOSTO"
+    $path  = $year . '/' . $month . '/' . $contenidoId . '/' . $prefix . '_' . time() . '.' . $ext;
 
     $result = sb_storage_upload('imagenes', $path, $binary, $mime);
     if ($result['code'] < 200 || $result['code'] >= 300) {
-        // Return result so callers can expose the real Supabase error
         return ['__error' => true, 'code' => $result['code'], 'raw' => $result['raw'] ?? '', 'curl_err' => $result['err'] ?? ''];
     }
 
