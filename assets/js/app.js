@@ -1732,9 +1732,8 @@ async function saveContent() {
     });
 
     try {
-        const btnSave = document.getElementById('btnSave');
-        btnSave.innerHTML = '<span class="loading-spinner"></span> Guardando...';
-        btnSave.disabled = true;
+        const btnSave = document.getElementById('btnGuardarContenido');
+        if (btnSave) { btnSave.innerHTML = '<span class="loading-spinner"></span> Guardando...'; btnSave.disabled = true; }
 
         // Fire spellcheck in background (non-blocking) — don't wait for it
         const spellPromise = checkSpellingErrors(data).catch(() => ({ hasError: 0, detail: null }));
@@ -1802,9 +1801,8 @@ async function saveContent() {
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
     } finally {
-        const btnSave = document.getElementById('btnSave');
-        btnSave.innerHTML = 'Guardar';
-        btnSave.disabled = false;
+        const btnSave = document.getElementById('btnGuardarContenido');
+        if (btnSave) { btnSave.innerHTML = 'Guardar'; btnSave.disabled = false; }
     }
 }
 

@@ -63,10 +63,18 @@ switch ($action) {
         $input   = getJsonInput();
         $cid     = intval($input['contenido_id'] ?? 0);
         $imgData = $input['image_data'] ?? '';
-        if (!$cid || !$imgData) jsonResponse(['error' => 'Datos incompletos'], 400);
+        if (!$cid || !$imgData) jsonResponse(['error' => 'Datos incompletos', 'cid' => $cid, 'has_data' => !empty($imgData)], 400);
+
+        // Log incoming data size for debugging
+        $dataSize = strlen($imgData);
+        if ($dataSize > 10 * 1024 * 1024) { // > 10MB base64 = ~7.5MB image
+            jsonResponse(['error' => 'Imagen demasiado grande (máx. 7MB)', 'size_bytes' => $dataSize], 413);
+        }
 
         $uploaded = _uploadBase64ToStorage($imgData, $cid, 'ref');
-        if (!$uploaded) jsonResponse(['error' => 'Error subiendo imagen a Storage', 'debug' => $uploaded], 500);
+        if (!$uploaded || !empty($uploaded['__error'])) {
+            jsonResponse(['error' => 'Error subiendo imagen a Supabase Storage', 'details' => $uploaded], 500);
+        }
 
         $res = sb_post('contenido_imagenes', [
             'contenido_id'   => $cid,
@@ -109,7 +117,10 @@ function _uploadBase64ToStorage($dataUrl, $contenidoId, $prefix = 'img') {
     $path    = $contenidoId . '/' . $prefix . '_' . time() . '.' . $ext;
 
     $result = sb_storage_upload('imagenes', $path, $binary, $mime);
-    if ($result['code'] < 200 || $result['code'] >= 300) return null;
+    if ($result['code'] < 200 || $result['code'] >= 300) {
+        // Return result so callers can expose the real Supabase error
+        return ['__error' => true, 'code' => $result['code'], 'body' => $result['body'] ?? ''];
+    }
 
     return [
         'path' => $path,
