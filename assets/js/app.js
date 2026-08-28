@@ -955,19 +955,42 @@ function openCreateModal() {
 async function openEditModal(id) {
     state.editingId = id;
     
+    // ✅ Open modal IMMEDIATELY with skeleton — don't wait for network
+    document.getElementById('modalTitle').innerHTML = 'Editar Contenido';
+    document.getElementById('modalBody').innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:14px; padding:8px 0; animation: pulse 1.4s ease-in-out infinite;">
+            <div style="height:40px; border-radius:6px; background:var(--bg-glass-hover);"></div>
+            <div style="display:grid; grid-template-columns: 130px 1fr 1fr 1fr 1fr; gap:8px;">
+                ${Array(5).fill('<div style="height:36px; border-radius:6px; background:var(--bg-glass-hover);"></div>').join('')}
+            </div>
+            <div style="display:grid; grid-template-columns: 280px 1fr; gap:16px; margin-top:8px;">
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="height:120px; border-radius:6px; background:var(--bg-glass-hover);"></div>
+                    <div style="height:100px; border-radius:6px; background:var(--bg-glass-hover);"></div>
+                    <div style="height:120px; border-radius:6px; background:var(--bg-glass-hover);"></div>
+                </div>
+                <div style="height:340px; border-radius:6px; background:var(--bg-glass-hover);"></div>
+            </div>
+        </div>
+        <style>@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }</style>`;
+    document.getElementById('modalFooter').innerHTML = `
+        <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" disabled style="opacity:0.5;">Guardar</button>`;
+    openModal('contentModal');
+    
     try {
         const res = await api('contenidos.php', { action: 'get', id });
-        state.modalTab = res.data.pestana_slug; // Changed from state.currentTab so it doesn't break ALL view
-        const isPP = false;
+        state.modalTab = res.data.pestana_slug;
+
         let subtitle = '';
         if (res.data.historial && res.data.historial.length > 0) {
             const lastLog = res.data.historial[0];
-            subtitle = `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:5px; font-weight:normal; display:flex; align-items:center; gap:5px;"><svg class="svg-icon" viewBox="0 0 24 24" style="width:12px;height:12px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Última edición por <b style="color:var(--text-color)">${escHtml(lastLog.usuario_nombre || 'Sistema')}</b> el ${formatDate(lastLog.created_at)}</div>`;
+            subtitle = `<div style="font-size:0.73rem; color:var(--text-muted); margin-top:4px; font-weight:normal; display:flex; align-items:center; gap:5px;"><svg class="svg-icon" viewBox="0 0 24 24" style="width:11px;height:11px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Última edición por <b style="color:var(--text-color)">${escHtml(lastLog.usuario_nombre || 'Sistema')}</b>&nbsp;·&nbsp;${formatDate(lastLog.created_at)}</div>`;
         }
         document.getElementById('modalTitle').innerHTML = 'Editar Contenido' + subtitle;
         
         renderContentForm(res.data);
-        openModal('contentModal');
+
     } catch (err) {
         if(typeof showToast === 'function') showToast('Error al cargar: ' + err.message, 'error');
     }
