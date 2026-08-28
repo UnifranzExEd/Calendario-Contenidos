@@ -190,10 +190,120 @@ async function initApp() {
 
         // Poll notifications every 60s
         setInterval(checkNotifications, 60000);
+
+        // Start Supabase Realtime sync
+        initRealtimeSync();
     } catch (err) {
         showToast('Error al cargar la aplicación: ' + err.message, 'error');
         console.error(err);
     }
+}
+
+// ══════════════════════════════════════════
+// REALTIME SYNC (Supabase WebSocket)
+// ══════════════════════════════════════════
+let _realtimeChannel = null;
+let _realtimeDebounce = null;
+
+function initRealtimeSync() {
+    // Supabase anon key (safe to expose in frontend)
+    const SB_URL  = 'https://sovizuthexmkfabcspsd.supabase.co';
+    const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdml6dXRoZXhta2ZhY' +
+                    'mNzcHNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3MzY5MjYsImV4cCI6MjA5ODMxMjkyNn0.ADL_uKhW8-nvaoIkQgxojx-gsCoU2GobMKxIMqfsSuo';
+
+    // Load Supabase JS client dynamically
+    if (window.__sbRealtimeLoaded) return;
+    window.__sbRealtimeLoaded = true;
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+    script.onload = () => {
+        try {
+            const sb = window.supabase.createClient(SB_URL, SB_ANON);
+
+            // Add live indicator dot to header
+            _addLiveDot();
+
+            _realtimeChannel = sb
+                .channel('calendario-live')
+                .on('postgres_changes', {
+                    event: '*',           // INSERT, UPDATE, DELETE
+                    schema: 'public',
+                    table:  'contenidos'
+                }, (payload) => {
+                    _onRealtimeChange(payload);
+                })
+                .subscribe((status) => {
+                    const dot = document.getElementById('realtimeDot');
+                    if (status === 'SUBSCRIBED') {
+                        if (dot) { dot.style.background = '#22c55e'; dot.title = 'Sincronización en tiempo real: activa'; }
+                        console.log('[Realtime] Conectado ✓');
+                    } else if (status === 'CHANNEL_ERROR') {
+                        if (dot) { dot.style.background = '#ef4444'; dot.title = 'Sin conexión en tiempo real'; }
+                    }
+                });
+        } catch(e) {
+            console.warn('[Realtime] No se pudo inicializar:', e);
+        }
+    };
+    document.head.appendChild(script);
+}
+
+function _onRealtimeChange(payload) {
+    const modal = document.getElementById('contentModal');
+    const modalOpen = modal && modal.classList.contains('active');
+
+    // Debounce: avoid multiple rapid refreshes
+    clearTimeout(_realtimeDebounce);
+    _realtimeDebounce = setTimeout(() => {
+        // Only silent-refresh if user isn't actively editing
+        if (!modalOpen) {
+            loadContents();
+        }
+
+        // Show subtle "updated" toast
+        const evt   = payload.eventType;   // INSERT | UPDATE | DELETE
+        const emoji = evt === 'INSERT' ? '✦' : evt === 'DELETE' ? '✕' : '↻';
+        const label = evt === 'INSERT' ? 'Nuevo contenido' : evt === 'DELETE' ? 'Contenido eliminado' : 'Contenido actualizado';
+        _showRealtimeToast(`${emoji} ${label}`);
+    }, 800);
+}
+
+function _showRealtimeToast(msg) {
+    const t = document.createElement('div');
+    t.style.cssText = [
+        'position:fixed', 'bottom:72px', 'left:50%', 'transform:translateX(-50%)',
+        'background:#1e293b', 'color:#94a3b8', 'font-size:0.72rem', 'letter-spacing:0.06em',
+        'padding:6px 14px', 'border-radius:4px', 'border:1px solid #334155',
+        'z-index:9999', 'pointer-events:none', 'transition:opacity 0.4s'
+    ].join(';');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 2500);
+}
+
+function _addLiveDot() {
+    if (document.getElementById('realtimeDot')) return;
+    const dot = document.createElement('div');
+    dot.id = 'realtimeDot';
+    dot.title = 'Conectando sincronización en tiempo real...';
+    dot.style.cssText = [
+        'width:8px', 'height:8px', 'border-radius:50%',
+        'background:#f59e0b', 'display:inline-block',
+        'margin-left:8px', 'vertical-align:middle',
+        'box-shadow:0 0 6px currentColor', 'cursor:default',
+        'animation:pulse 2s infinite'
+    ].join(';');
+    // Inject keyframes if not already present
+    if (!document.getElementById('realtimePulseStyle')) {
+        const style = document.createElement('style');
+        style.id = 'realtimePulseStyle';
+        style.textContent = '@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }';
+        document.head.appendChild(style);
+    }
+    // Append to header title area
+    const title = document.getElementById('headerTitle');
+    if (title) title.appendChild(dot);
 }
 
 // â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
