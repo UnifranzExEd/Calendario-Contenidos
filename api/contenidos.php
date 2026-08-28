@@ -145,7 +145,10 @@ switch ($action) {
 
         $cRes = sb_post('contenidos', $body);
         $cid  = $cRes['data'][0]['id'] ?? null;
-        if (!$cid) jsonResponse(['error' => 'Error al crear', 'details' => $cRes], 500);
+        if (!$cid) {
+            $sbError = $cRes['data']['message'] ?? ($cRes['data']['error'] ?? json_encode($cRes['data']));
+            jsonResponse(['error' => 'Error al crear contenido en Supabase', 'supabase_error' => $sbError, 'http_code' => $cRes['code']], 500);
+        }
 
         if (function_exists('notificarRol')) {
             notificarRol('admin', 'nuevo_contenido', "Nuevo contenido creado: " . ($input['tema'] ?? 'Sin título'), $cid);
