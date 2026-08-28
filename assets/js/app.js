@@ -3352,6 +3352,30 @@ function handleCapturaFileDashboard(e, id) {
     const file = e.target.files?.[0];
     if (file) readAndUploadCapturaDashboard(file, id);
 }
+// ─── WebP Compressor (client-side, before upload) ─────────────────────
+// Converts any image to WebP at 85% quality, max 1920px wide/tall.
+// Returns a Promise<dataUrl> with the compressed WebP base64.
+function compressToWebP(file, maxDim = 1920, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            let { width, height } = img;
+            if (width > maxDim || height > maxDim) {
+                if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+                else                { width = Math.round(width * maxDim / height);  height = maxDim; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width; canvas.height = height;
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/webp', quality));
+        };
+        img.onerror = reject;
+        img.src = objectUrl;
+    });
+}
+
 // ── Referencia Visual (imageDropZone) Handler ─────────────────────
 function handleImageFileUpload(e) {
     const file = e.target.files?.[0];
@@ -3364,37 +3388,50 @@ function handleImageDropDashboard(e) {
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith('image/')) uploadReferenciaVisual(file);
 }
-function uploadReferenciaVisual(file) {
+async function uploadReferenciaVisual(file) {
     const id = state.editingId;
     if (!id) return;
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-        const dataUrl = ev.target.result;
-        // Show preview immediately in the drop zone area
-        const preview = document.getElementById('imagePreviewArea');
-        if (preview) {
-            const wrapper = document.createElement('div');
-            wrapper.style.cssText = 'position:relative; display:inline-block; opacity:0.6;';
-            wrapper.innerHTML = `<img src="${dataUrl}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border-color);display:block;cursor:pointer;" alt="ref" onclick="openLightbox('${dataUrl}')">`;
-            preview.appendChild(wrapper);
+
+    // Compress to WebP immediately — show spinner on preview
+    const preview = document.getElementById('imagePreviewArea');
+    if (preview) {
+        const spinnerWrap = document.createElement('div');
+        spinnerWrap.id = '__refSpinner';
+        spinnerWrap.style.cssText = 'width:72px;height:72px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px dashed var(--border-color);';
+        spinnerWrap.innerHTML = '<span class="loading-spinner"></span>';
+        preview.appendChild(spinnerWrap);
+    }
+
+    let dataUrl;
+    try {
+        dataUrl = await compressToWebP(file);
+    } catch(e) {
+        // Fallback: read as-is
+        dataUrl = await new Promise(res => { const r = new FileReader(); r.onload = ev => res(ev.target.result); r.readAsDataURL(file); });
+    }
+    document.getElementById('__refSpinner')?.remove();
+
+    // Show preview immediately
+    if (preview) {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:relative; display:inline-block; opacity:0.7;';
+        wrapper.innerHTML = `<img src="${dataUrl}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border-color);display:block;cursor:pointer;" alt="ref" onclick="openLightbox('${dataUrl}')">`;
+        preview.appendChild(wrapper);
+    }
+    try {
+        const res = await apiPost('metricas.php?action=save_referencia_visual', {
+            contenido_id: id,
+            image_data: dataUrl
+        });
+        if (res.success) {
+            showToast('Referencia visual guardada ✓', 'success');
+            openEditModal(id);
+        } else {
+            showToast('Error guardando imagen', 'error');
         }
-        try {
-            const res = await apiPost('metricas.php?action=save_referencia_visual', {
-                contenido_id: id,
-                image_data: dataUrl
-            });
-            if (res.success) {
-                showToast('Referencia visual guardada', 'success');
-                // Reload modal to get the real DB id for deletion
-                openEditModal(id);
-            } else {
-                showToast('Error guardando imagen', 'error');
-            }
-        } catch(err) {
-            showToast('Error: ' + err.message, 'error');
-        }
-    };
-    reader.readAsDataURL(file);
+    } catch(err) {
+        showToast('Error: ' + err.message, 'error');
+    }
 }
 async function deleteReferenciaVisual(imagenId) {
     if (!confirm('¿Eliminar esta imagen de referencia?')) return;
@@ -3433,15 +3470,16 @@ function handleCapturaPasteDashboard(e) {
 }
 document.addEventListener('paste', handleCapturaPasteDashboard);
 
-function readAndUploadCapturaDashboard(file, id) {
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-        const dataUrl = ev.target.result;
-        const zone = document.getElementById('capturaZoneDashboard');
-        if (zone) zone.innerHTML = `<img src="${dataUrl}" class="captura-preview" style="max-width:100%; border-radius:8px; display:block; margin:0 auto; cursor:pointer;" alt="captura" onclick="event.stopPropagation(); openLightbox('${dataUrl}')">`;
-        await saveCapturaDashboard(id, dataUrl);
-    };
-    reader.readAsDataURL(file);
+async function readAndUploadCapturaDashboard(file, id) {
+    let dataUrl;
+    try {
+        dataUrl = await compressToWebP(file);
+    } catch(e) {
+        dataUrl = await new Promise(res => { const r = new FileReader(); r.onload = ev => res(ev.target.result); r.readAsDataURL(file); });
+    }
+    const zone = document.getElementById('capturaZoneDashboard');
+    if (zone) zone.innerHTML = `<img src="${dataUrl}" class="captura-preview" style="max-width:100%; border-radius:8px; display:block; margin:0 auto; cursor:pointer;" alt="captura" onclick="event.stopPropagation(); openLightbox('${dataUrl}')">`;
+    await saveCapturaDashboard(id, dataUrl);
 }
 async function saveCapturaDashboard(id, dataUrl) {
     try {
