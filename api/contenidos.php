@@ -131,7 +131,7 @@ switch ($action) {
             'idea'                       => $input['idea']     ?? null,
             'red_social'                 => $input['red_social'] ?? null,
             'estado'                     => $input['estado']   ?? 'En elaboración',
-            'error_ortografico'          => !empty($input['error_ortografico']),
+            'error_ortografico'          => !empty($input['error_ortografico']) ? 1 : 0,
             'error_ortografico_detalle'  => $input['error_ortografico_detalle'] ?? null,
             'formato'                    => $input['formato']  ?? null,
             'horario'                    => $input['horario']  ?? null,
@@ -139,7 +139,7 @@ switch ($action) {
             'enlace_publicado'           => $input['enlace_publicado'] ?? null,
             'enlace_diseno'              => $input['enlace_diseno']    ?? null,
             'observaciones'              => $input['observaciones']    ?? null,
-            'enviar_postproduccion'      => !empty($input['enviar_postproduccion']),
+            'enviar_postproduccion'      => !empty($input['enviar_postproduccion']) ? 1 : 0,
             'creado_por'                 => $user['id'],
         ];
 
