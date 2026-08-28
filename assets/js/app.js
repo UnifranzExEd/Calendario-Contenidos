@@ -1197,7 +1197,7 @@ function renderContentForm(data) {
             </div>
         </div>
         ${(() => {
-            const otherLinks = linkFields.filter(c => c.nombre_campo !== 'enlace_contenido' && c.nombre_campo !== 'enlace_diseno');
+            const otherLinks = camposTab.filter(c => c.tipo_campo === 'url' && c.nombre_campo !== 'enlace_contenido' && c.nombre_campo !== 'enlace_diseno');
             return otherLinks.map(c => {
                 const v = data[c.nombre_campo] || '';
                 return `<div>
