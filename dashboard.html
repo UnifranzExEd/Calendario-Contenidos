@@ -31,8 +31,8 @@
     <!-- ── SIDEBAR ── -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="brand" style="width: 100%; display: flex; align-items: center; justify-content: center; padding: 0 10px;">
-                <img src="assets/img/logo.svg" alt="Executive Education" style="width: 100%; max-width: 210px; height: auto; object-fit: contain;">
+            <div class="brand" id="brandLogoContainer" style="width: 100%; display: flex; align-items: center; justify-content: center; padding: 0 10px; min-height: 50px;">
+                <!-- Logo injected via JS -->
             </div>
         </div>
 
@@ -636,6 +636,22 @@
     });
 
     (async function initApp() {
+        // Fetch and inline logo so we can target its paths with CSS
+        fetch('assets/img/logo.svg')
+            .then(r => r.text())
+            .then(svg => {
+                const container = document.getElementById('brandLogoContainer');
+                if (container) {
+                    container.innerHTML = svg;
+                    const svgEl = container.querySelector('svg');
+                    if (svgEl) {
+                        svgEl.style.width = '100%';
+                        svgEl.style.maxWidth = '210px';
+                        svgEl.style.height = 'auto';
+                    }
+                }
+            }).catch(e => console.error('Error loading logo:', e));
+
         try {
             // Check token exists first — if cache was cleared, redirect immediately
             const token = localStorage.getItem('auth_token');

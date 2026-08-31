@@ -133,6 +133,9 @@
 [data-theme="light"] .btn-secondary:hover { background: #e5e5e5; }
 [data-theme="light"] .editor-section { border-color: rgba(0,0,0,0.06); }
 [data-theme="light"] .modal-image-panel { background: #f8f8f8; }
+[data-theme="light"] .tabs-bar { background: var(--bg-tertiary); }
+[data-theme="light"] .toolbar { background: var(--bg-secondary); border-bottom-color: var(--border-color); }
+[data-theme="light"] .brand svg .cls-1 { fill: var(--text-primary); }
 
 /* ── Theme Toggle Button ── */
 .theme-toggle {
