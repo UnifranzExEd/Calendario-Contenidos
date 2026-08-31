@@ -1096,6 +1096,12 @@ textarea.form-control {
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    background: var(--bg-secondary);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 /* ── EDITOR SECTIONS ── */
@@ -2766,4 +2772,373 @@ textarea.form-control {
 /* Simple Mode Hide Logic */
 .simple-mode-active [data-field]:not([data-field="tema"]):not([data-field="estado"]):not([data-field="fecha"]):not([data-field="enlace_contenido"]):not([data-field="enlace_diseno"]):not([data-field="observaciones"]):not([data-field="postproductor_id"]) {
     display: none !important;
+}
+
+/* =====================================================
+   UX IMPROVEMENTS — Quick Actions & Intuitive Flow
+   ===================================================== */
+
+/* ── 1. ROW ACTION BUTTONS (visible on hover) ── */
+.row-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    justify-content: center;
+    white-space: nowrap;
+    min-width: 120px;
+}
+
+.row-actions .action-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    opacity: 0;
+    transform: scale(0.85);
+    padding: 0;
+}
+
+.data-table tr:hover .row-actions .action-btn {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.row-actions .action-btn:hover {
+    background: var(--bg-glass-hover);
+    color: var(--text-primary);
+}
+
+.row-actions .action-edit:hover {
+    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+}
+
+.row-actions .action-duplicate:hover {
+    background: rgba(34, 197, 94, 0.15);
+    color: #86efac;
+}
+
+.row-actions .action-estado:hover {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fde047;
+}
+
+.row-actions .action-more:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+.row-actions .action-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Keep first button (edit) always slightly visible */
+.row-actions .action-edit {
+    opacity: 0.4;
+    transform: scale(1);
+}
+
+.data-table tr:hover .row-actions .action-edit {
+    opacity: 1;
+}
+
+/* ── 2. CALENDAR "+" ADD BUTTON ── */
+.calendar-day {
+    position: relative;
+}
+
+.cal-add-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1.5px dashed rgba(255, 255, 255, 0.15);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.2s ease;
+    z-index: 3;
+    line-height: 1;
+}
+
+.calendar-day:hover .cal-add-btn {
+    opacity: 1;
+}
+
+.cal-add-btn:hover {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    color: white !important;
+    border-style: solid !important;
+    transform: scale(1.15);
+    box-shadow: 0 0 12px rgba(255, 0, 0, 0.4);
+}
+
+/* Don't show on other-month days */
+.calendar-day.other-month .cal-add-btn {
+    display: none;
+}
+
+/* ── 3. STICKY MODAL FOOTER ── */
+.modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+/* Shortcut hint in save button */
+.save-shortcut-hint {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-left: 6px;
+    opacity: 0.6;
+    font-weight: 400;
+    letter-spacing: 0.3px;
+}
+
+/* ── 4. QUICK ACTIONS BAR (floating bottom bar) ── */
+.quick-actions-bar {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #1e1e2e;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.quick-actions-bar.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: all;
+}
+
+.quick-actions-bar .qa-count {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-accent);
+    padding-right: 10px;
+    border-right: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.quick-actions-bar .qa-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.quick-actions-bar .qa-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.quick-actions-bar .qa-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.quick-actions-bar .qa-btn.qa-duplicate:hover { color: #86efac; background: rgba(34, 197, 94, 0.1); }
+.quick-actions-bar .qa-btn.qa-estado:hover { color: #fde047; background: rgba(245, 158, 11, 0.1); }
+.quick-actions-bar .qa-btn.qa-shift:hover { color: #93c5fd; background: rgba(59, 130, 246, 0.1); }
+.quick-actions-bar .qa-btn.qa-pp:hover { color: #c4b5fd; background: rgba(124, 58, 237, 0.1); }
+
+.quick-actions-bar .qa-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    transition: var(--transition);
+    margin-left: 4px;
+}
+
+.quick-actions-bar .qa-close:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* ── 5. DIRTY STATE (unsaved changes indicator) ── */
+.btn-primary.has-changes {
+    animation: pulseGlow 2s ease-in-out infinite;
+    background: linear-gradient(135deg, var(--accent), #ff4444) !important;
+    box-shadow: 0 0 16px rgba(255, 0, 0, 0.3);
+}
+
+@keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 8px rgba(255, 0, 0, 0.2); }
+    50% { box-shadow: 0 0 20px rgba(255, 0, 0, 0.5); }
+}
+
+/* ── 6. SAVE SUCCESS ANIMATION ── */
+.btn-primary.save-success {
+    background: var(--success) !important;
+    box-shadow: 0 0 12px rgba(46, 125, 50, 0.4);
+    transition: all 0.3s ease;
+}
+
+/* ── 7. ROW FADE-IN animation for optimistic inserts ── */
+@keyframes rowFadeIn {
+    from { opacity: 0; transform: translateY(-8px); background: rgba(34, 197, 94, 0.08); }
+    to   { opacity: 1; transform: translateY(0); background: transparent; }
+}
+
+.data-table tr.row-new {
+    animation: rowFadeIn 0.5s ease-out;
+}
+
+/* Row fade-out for optimistic deletes */
+@keyframes rowFadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(8px); height: 0; padding: 0; }
+}
+
+.data-table tr.row-removing td {
+    animation: rowFadeOut 0.35s ease-in forwards;
+}
+
+/* ── 8. INLINE ESTADO QUICK PICKER ── */
+.quick-estado-picker {
+    position: fixed;
+    z-index: 9999;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    padding: 4px;
+    min-width: 180px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.quick-estado-picker .qe-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+}
+
+.quick-estado-picker .qe-item:hover {
+    background: var(--bg-glass-hover);
+    color: var(--text-primary);
+}
+
+.quick-estado-picker .qe-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* ── 9. SHORTCUT BADGE ── */
+.shortcut-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-family: monospace;
+    letter-spacing: 0.5px;
+    opacity: 0.7;
+}
+
+/* ── 10. ONBOARDING TOOLTIP ── */
+.ux-tooltip {
+    position: fixed;
+    z-index: 10000;
+    background: #1e293b;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 8px;
+    padding: 10px 14px;
+    max-width: 260px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    font-size: 0.78rem;
+    color: #e2e8f0;
+    line-height: 1.4;
+    animation: tooltipIn 0.3s ease-out;
+}
+
+.ux-tooltip::before {
+    content: '💡';
+    margin-right: 6px;
+}
+
+.ux-tooltip .tip-dismiss {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-align: right;
+}
+
+.ux-tooltip .tip-dismiss:hover {
+    color: var(--text-primary);
+}
+
+@keyframes tooltipIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
 }

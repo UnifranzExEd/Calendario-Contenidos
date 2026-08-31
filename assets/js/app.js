@@ -523,7 +523,7 @@ function renderTable() {
             if (c.nombre_campo === 'horario') w = '70px';
             const a = (c.tipo_campo === 'url' || c.nombre_campo === 'horario') ? 'center' : 'left';
             return '<th style="min-width:' + w + ';width:' + w + ';text-align:' + a + ';" data-field="' + c.nombre_campo + '" onclick="sortBy(\'' + c.nombre_campo + '\')">' + c.nombre_display + '<span class="sort-icon">' + sortIcon(c.nombre_campo) + '</span></th>';
-        }).join('') + '<th style="width:60px">Acc.</th></tr>';
+        }).join('') + '<th style="width:130px;text-align:center">Acciones</th></tr>';
 
     if (!state.contenidos.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
     empty.style.display = 'none';
@@ -569,7 +569,12 @@ function renderTable() {
             rows += '</td>';
         });
 
-        rows += '<td><button class="btn-icon btn-secondary" onclick="openEditModal(' + item.id + ')" oncontextmenu="showContextMenu(event,' + item.id + ')" title="Editar"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button></td>';
+        rows += '<td class="row-actions">';
+        rows += '<button class="action-btn action-edit" onclick="event.stopPropagation(); openEditModal(' + item.id + ')" title="Editar"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>';
+        rows += '<button class="action-btn action-duplicate" onclick="event.stopPropagation(); quickDuplicate(' + item.id + ')" title="Duplicar"><svg class="svg-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>';
+        rows += '<button class="action-btn action-estado" onclick="event.stopPropagation(); quickEstado(event,' + item.id + ')" title="Cambiar estado"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></button>';
+        rows += '<button class="action-btn action-more" onclick="event.stopPropagation(); showContextMenu(event,' + item.id + ')" title="Más opciones"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>';
+        rows += '</td>';
         rows += '</tr>';
     });
     tbody.innerHTML = rows;
@@ -873,6 +878,7 @@ function renderCalendar() {
         const dayContents = contentsByDate.get(dateStr) || [];
 
         html += `<div class="calendar-day ${isToday ? 'today' : ''}" onclick="openDayDetail('${dateStr}')" oncontextmenu="showCalendarDayContextMenu(event, '${dateStr}')">`;
+        html += `<button class="cal-add-btn" onclick="event.stopPropagation(); openCreateModalWithDate('${dateStr}')" title="Crear contenido en este día">+</button>`;
         html += `<div class="day-number">${d}</div>`;
         html += `<div class="calendar-events-container">`;
 
@@ -1513,7 +1519,7 @@ function renderContentForm(data) {
             footerHtml += `<button class="btn btn-danger" onclick="deleteContent(${data.id})" style="margin-right:auto; padding:8px 14px; background:rgba(239,68,68,0.15); color:#fca5a5; border:1px solid rgba(239,68,68,0.3); display:flex; align-items:center; gap:6px;"><svg class="svg-icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Eliminar contenido</button>`;
         }
         footerHtml += `<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-                       <button class="btn btn-primary" onclick="saveContent()" id="btnGuardarContenido" ${!canEdit ? 'style="display:none;"' : ''}>Guardar</button>`;
+                       <button class="btn btn-primary" onclick="saveContent()" id="btnGuardarContenido" ${!canEdit ? 'style="display:none;"' : ''}>Guardar <span class="save-shortcut-hint">${navigator.platform.includes('Mac') ? '⌘S' : 'Ctrl+S'}</span></button>`;
         modalFooter.innerHTML = footerHtml;
     }
 
@@ -1917,13 +1923,18 @@ async function saveContent() {
             }
         }
 
+        _formDirty = false; // Clear dirty state before closing so no unsaved-changes warning
         closeModal();
         loadContents();
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
     } finally {
         const btnSave = document.getElementById('btnGuardarContenido');
-        if (btnSave) { btnSave.innerHTML = 'Guardar'; btnSave.disabled = false; }
+        if (btnSave) {
+            const hint = navigator.platform.includes('Mac') ? '⌘S' : 'Ctrl+S';
+            btnSave.innerHTML = `Guardar <span class="save-shortcut-hint">${hint}</span>`;
+            btnSave.disabled = false;
+        }
     }
 }
 
@@ -2942,6 +2953,21 @@ function openModal(id) {
 }
 
 function closeModal() {
+    // Check for unsaved changes before closing
+    if (_formDirty) {
+        customConfirm('Tienes cambios sin guardar. ¿Salir sin guardar?').then(ok => {
+            if (ok) {
+                _formDirty = false;
+                _doCloseModal();
+            }
+        });
+        return;
+    }
+    _doCloseModal();
+}
+
+function _doCloseModal() {
+    _formDirty = false;
     const body = document.getElementById('modalBody');
     if (body) body.classList.remove('simple-mode-active');
 
@@ -5052,3 +5078,400 @@ async function saveMicrotarea() {
         showToast('Error: ' + err.message, 'error');
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// UX IMPROVEMENTS — Quick Actions & Intuitive Flow
+// ═══════════════════════════════════════════════════════════════════
+
+// ── DIRTY STATE TRACKING ──────────────────────────────────────────
+let _formDirty = false;
+
+function markFormDirty() {
+    if (_formDirty) return; // already dirty
+    _formDirty = true;
+    const btn = document.getElementById('btnGuardarContenido');
+    if (btn) {
+        btn.classList.add('has-changes');
+        // Keep the shortcut hint visible
+        const hint = navigator.platform.includes('Mac') ? '⌘S' : 'Ctrl+S';
+        btn.innerHTML = `● Guardar cambios <span class="save-shortcut-hint">${hint}</span>`;
+    }
+}
+
+function clearDirtyState() {
+    _formDirty = false;
+    const btn = document.getElementById('btnGuardarContenido');
+    if (btn) {
+        btn.classList.remove('has-changes');
+        const hint = navigator.platform.includes('Mac') ? '⌘S' : 'Ctrl+S';
+        btn.innerHTML = `Guardar <span class="save-shortcut-hint">${hint}</span>`;
+    }
+}
+
+// Attach dirty tracking to modal form inputs (called after renderContentForm)
+function _attachDirtyTracking() {
+    const modalBody = document.getElementById('modalBody');
+    if (!modalBody) return;
+    
+    // Use event delegation on the modal body
+    const handler = () => markFormDirty();
+    modalBody.addEventListener('input', handler);
+    modalBody.addEventListener('change', handler);
+}
+
+// Patch renderContentForm to attach dirty tracking after rendering
+const _origRenderContentForm = renderContentForm;
+renderContentForm = function(data) {
+    _origRenderContentForm(data);
+    _formDirty = false;
+    setTimeout(_attachDirtyTracking, 50);
+};
+
+// ── KEYBOARD SHORTCUT: Ctrl+S / Cmd+S ────────────────────────────
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        const contentModal = document.getElementById('contentModal');
+        const mtModal = document.getElementById('microtareaModal');
+        
+        if (contentModal && contentModal.classList.contains('active')) {
+            saveContent();
+        } else if (mtModal && mtModal.classList.contains('active')) {
+            saveMicrotarea();
+        }
+    }
+});
+
+// (dirty state is cleared inside the original saveContent before closeModal)
+
+
+// ── QUICK DUPLICATE (Optimistic UI) ──────────────────────────────
+async function quickDuplicate(id) {
+    const item = state.contenidos.find(c => c.id == id);
+    if (!item) return;
+    
+    // Optimistic: create a temporary copy in local state
+    const tempId = 'temp_' + Date.now();
+    const copy = { ...item, id: tempId, tema: (item.tema || '') + ' (copia)' };
+    
+    // Find position and insert after original
+    const idx = state.contenidos.findIndex(c => c.id == id);
+    state.contenidos.splice(idx + 1, 0, copy);
+    
+    // Re-render with animation
+    if (state.currentView === 'table') {
+        renderTable();
+        // Mark new row for animation
+        setTimeout(() => {
+            const newRow = document.querySelector(`tr[data-id="${tempId}"]`);
+            if (newRow) newRow.classList.add('row-new');
+        }, 10);
+    } else {
+        renderCalendar();
+    }
+    
+    showToast('Duplicando contenido...', 'info');
+    
+    try {
+        const res = await apiPost('contenidos.php?action=duplicate', { id });
+        // Replace temp with real data
+        const tempIdx = state.contenidos.findIndex(c => c.id === tempId);
+        if (tempIdx !== -1 && res && res.id) {
+            state.contenidos[tempIdx].id = res.id;
+        }
+        showToast('Contenido duplicado ✓', 'success');
+        // Soft reload to get full data
+        loadContents();
+    } catch (e) {
+        // Revert optimistic update
+        const tempIdx = state.contenidos.findIndex(c => c.id === tempId);
+        if (tempIdx !== -1) state.contenidos.splice(tempIdx, 1);
+        if (state.currentView === 'table') renderTable();
+        else renderCalendar();
+        showToast('Error al duplicar: ' + e.message, 'error');
+    }
+}
+
+// ── QUICK ESTADO PICKER (Inline Dropdown) ────────────────────────
+function quickEstado(e, id) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Remove existing picker
+    document.querySelectorAll('.quick-estado-picker').forEach(el => el.remove());
+    
+    const item = state.contenidos.find(c => c.id == id);
+    const currentEstado = item ? item.estado : '';
+    
+    const ESTADOS = ['En elaboración','Redacción','En revisión','Producción','Corrección','Aprobado','Programado','Publicado'];
+    
+    const picker = document.createElement('div');
+    picker.className = 'quick-estado-picker';
+    
+    picker.innerHTML = ESTADOS.map(est => `
+        <button class="qe-item" ${est === currentEstado ? 'style="font-weight:700; color:var(--text-primary);"' : ''}
+                onclick="selectQuickEstado(${id}, '${est}')">
+            <span class="qe-dot" style="background:${ESTADO_COLORS[est] || '#6b7280'}"></span>
+            ${est}
+            ${est === currentEstado ? '<span style="margin-left:auto; font-size:0.7rem; opacity:0.5;">actual</span>' : ''}
+        </button>
+    `).join('');
+    
+    document.body.appendChild(picker);
+    
+    // Position near the click
+    const rect = e.target.getBoundingClientRect();
+    let top = rect.bottom + 4;
+    let left = rect.left;
+    
+    // Bounds check
+    if (left + 200 > window.innerWidth) left = window.innerWidth - 210;
+    if (top + 300 > window.innerHeight) top = rect.top - 310;
+    
+    picker.style.top = top + 'px';
+    picker.style.left = left + 'px';
+    
+    // Close on outside click
+    const closePicker = (ev) => {
+        if (!picker.contains(ev.target)) {
+            picker.remove();
+            document.removeEventListener('click', closePicker);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', closePicker), 10);
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { picker.remove(); document.removeEventListener('click', closePicker); } }, { once: true });
+}
+
+async function selectQuickEstado(id, nuevoEstado) {
+    // Remove picker
+    document.querySelectorAll('.quick-estado-picker').forEach(el => el.remove());
+    
+    // Optimistic update
+    const item = state.contenidos.find(c => c.id == id);
+    const oldEstado = item ? item.estado : '';
+    if (item) item.estado = nuevoEstado;
+    
+    // Re-render just the affected row or full table
+    if (state.currentView === 'table') {
+        renderTable();
+    } else {
+        renderCalendar();
+    }
+    
+    showToast(`Estado → ${nuevoEstado}`, 'success');
+    
+    try {
+        await apiPost('contenidos.php?action=inline', { id, field: 'estado', value: nuevoEstado });
+    } catch (e) {
+        // Revert
+        if (item) item.estado = oldEstado;
+        if (state.currentView === 'table') renderTable();
+        else renderCalendar();
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+
+// ── QUICK ACTIONS BAR (selection-based actions) ──────────────────
+let _selectedIds = new Set();
+
+function toggleRowSelection(id, e) {
+    if (e) e.stopPropagation();
+    
+    const row = document.querySelector(`tr[data-id="${id}"]`);
+    if (!row) return;
+    
+    if (_selectedIds.has(id)) {
+        _selectedIds.delete(id);
+        row.classList.remove('selected');
+    } else {
+        _selectedIds.add(id);
+        row.classList.add('selected');
+    }
+    
+    updateQuickActionsBar();
+}
+
+function clearSelection() {
+    _selectedIds.clear();
+    document.querySelectorAll('.data-table tr.selected').forEach(r => r.classList.remove('selected'));
+    updateQuickActionsBar();
+}
+
+function updateQuickActionsBar() {
+    const bar = document.getElementById('quickActionsBar');
+    if (!bar) return;
+    
+    if (_selectedIds.size > 0) {
+        bar.classList.add('visible');
+        const countEl = bar.querySelector('.qa-count');
+        if (countEl) countEl.textContent = `${_selectedIds.size} seleccionado${_selectedIds.size > 1 ? 's' : ''}`;
+    } else {
+        bar.classList.remove('visible');
+    }
+}
+
+async function qaBulkDuplicate() {
+    if (_selectedIds.size === 0) return;
+    const ids = [..._selectedIds];
+    clearSelection();
+    
+    for (const id of ids) {
+        try {
+            await apiPost('contenidos.php?action=duplicate', { id });
+        } catch (e) { /* continue */ }
+    }
+    showToast(`${ids.length} contenido(s) duplicado(s) ✓`, 'success');
+    loadContents();
+}
+
+async function qaBulkEstado() {
+    if (_selectedIds.size === 0) return;
+    // Create a picker at the bar position
+    const bar = document.getElementById('quickActionsBar');
+    if (!bar) return;
+    
+    const rect = bar.getBoundingClientRect();
+    const fakeEvent = { preventDefault: ()=>{}, stopPropagation: ()=>{}, target: bar, clientX: rect.left + 200, clientY: rect.top - 10, getBoundingClientRect: () => rect };
+    
+    // Remove existing
+    document.querySelectorAll('.quick-estado-picker').forEach(el => el.remove());
+    
+    const ESTADOS = ['En elaboración','Redacción','En revisión','Producción','Corrección','Aprobado','Programado','Publicado'];
+    const picker = document.createElement('div');
+    picker.className = 'quick-estado-picker';
+    picker.innerHTML = ESTADOS.map(est => `
+        <button class="qe-item" onclick="qaBulkSetEstado('${est}')">
+            <span class="qe-dot" style="background:${ESTADO_COLORS[est] || '#6b7280'}"></span>
+            ${est}
+        </button>
+    `).join('');
+    
+    document.body.appendChild(picker);
+    picker.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+    picker.style.left = (rect.left + 100) + 'px';
+    picker.style.top = 'auto';
+    
+    const closePicker = (ev) => {
+        if (!picker.contains(ev.target)) { picker.remove(); document.removeEventListener('click', closePicker); }
+    };
+    setTimeout(() => document.addEventListener('click', closePicker), 10);
+}
+
+async function qaBulkSetEstado(estado) {
+    document.querySelectorAll('.quick-estado-picker').forEach(el => el.remove());
+    const ids = [..._selectedIds];
+    clearSelection();
+    
+    // Optimistic
+    ids.forEach(id => {
+        const item = state.contenidos.find(c => c.id == id);
+        if (item) item.estado = estado;
+    });
+    if (state.currentView === 'table') renderTable();
+    else renderCalendar();
+    showToast(`${ids.length} contenido(s) → ${estado}`, 'success');
+    
+    // Fire API calls
+    for (const id of ids) {
+        try {
+            await apiPost('contenidos.php?action=inline', { id, field: 'estado', value: estado });
+        } catch (e) { /* individual error ignored, will sync on next load */ }
+    }
+}
+
+async function qaBulkShift() {
+    if (_selectedIds.size === 0) return;
+    const ids = [..._selectedIds];
+    clearSelection();
+    
+    for (const id of ids) {
+        try {
+            await apiPost('contenidos.php?action=shift_date', { id });
+        } catch (e) { /* continue */ }
+    }
+    showToast(`${ids.length} contenido(s) movido(s) +1 día`, 'success');
+    loadContents();
+}
+
+async function qaBulkPP() {
+    if (_selectedIds.size === 0) return;
+    const ids = [..._selectedIds];
+    clearSelection();
+    
+    for (const id of ids) {
+        try {
+            await apiPost('contenidos.php?action=inline', { id, field: 'enviar_postproduccion', value: 1 });
+        } catch (e) { /* continue */ }
+    }
+    showToast(`${ids.length} contenido(s) enviado(s) a Post-Producción ✓`, 'success');
+    loadContents();
+}
+
+// ── ONBOARDING TOOLTIPS ──────────────────────────────────────────
+function showUXTip(key, message, anchorEl) {
+    // Only show each tip once
+    const tipKey = 'ux_tip_' + key;
+    if (localStorage.getItem(tipKey)) return;
+    
+    const tip = document.createElement('div');
+    tip.className = 'ux-tooltip';
+    tip.innerHTML = message + `<span class="tip-dismiss" onclick="this.parentElement.remove(); localStorage.setItem('${tipKey}', '1');">Entendido ✓</span>`;
+    
+    document.body.appendChild(tip);
+    
+    if (anchorEl) {
+        const rect = anchorEl.getBoundingClientRect();
+        tip.style.top = (rect.bottom + 8) + 'px';
+        tip.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
+    } else {
+        tip.style.bottom = '80px';
+        tip.style.right = '24px';
+    }
+    
+    // Auto-dismiss after 8 seconds
+    setTimeout(() => {
+        if (tip.parentElement) {
+            tip.style.opacity = '0';
+            setTimeout(() => tip.remove(), 300);
+            localStorage.setItem(tipKey, '1');
+        }
+    }, 8000);
+}
+
+// Show tips on first use
+setTimeout(() => {
+    if (!localStorage.getItem('ux_tip_row_actions')) {
+        const firstRow = document.querySelector('.data-table tbody tr[data-id]');
+        if (firstRow) {
+            showUXTip('row_actions', 'Pasa el cursor sobre cualquier fila para ver botones de <b>Editar</b>, <b>Duplicar</b>, <b>Cambiar estado</b> y <b>Más opciones</b>.', firstRow);
+        }
+    }
+}, 3000);
+
+// Show calendar tip when switching to calendar view
+const _origSetView = setView;
+setView = function(view) {
+    _origSetView(view);
+    if (view === 'calendar') {
+        setTimeout(() => {
+            const firstDay = document.querySelector('.calendar-day:not(.other-month)');
+            if (firstDay && !localStorage.getItem('ux_tip_cal_add')) {
+                showUXTip('cal_add', 'Pasa el cursor sobre cualquier día para ver el botón <b>+</b> y crear contenido directamente.', firstDay);
+            }
+        }, 500);
+    }
+};
+
+// Show save shortcut tip when opening modal for first time
+const _origOpenCreateModal = openCreateModal;
+openCreateModal = function() {
+    _origOpenCreateModal();
+    setTimeout(() => {
+        if (!localStorage.getItem('ux_tip_save_shortcut')) {
+            const saveBtn = document.getElementById('btnGuardarContenido');
+            if (saveBtn) {
+                showUXTip('save_shortcut', `Usa <b>${navigator.platform.includes('Mac') ? '⌘S' : 'Ctrl+S'}</b> para guardar rápidamente sin buscar el botón.`, saveBtn);
+            }
+        }
+    }, 1000);
+};

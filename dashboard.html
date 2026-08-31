@@ -557,8 +557,27 @@
     </div>
 </div>
 
+<!-- Quick Actions Bar (appears when rows are selected) -->
+<div class="quick-actions-bar" id="quickActionsBar">
+    <span class="qa-count">0 seleccionados</span>
+    <button class="qa-btn qa-duplicate" onclick="qaBulkDuplicate()">
+        <svg class="svg-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Duplicar
+    </button>
+    <button class="qa-btn qa-estado" onclick="qaBulkEstado()">
+        <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Estado
+    </button>
+    <button class="qa-btn qa-shift" onclick="qaBulkShift()">
+        <svg class="svg-icon" viewBox="0 0 24 24"><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg> +1 día
+    </button>
+    <button class="qa-btn qa-pp" onclick="qaBulkPP()">
+        <svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Enviar PP
+    </button>
+    <button class="qa-close" onclick="clearSelection()" title="Cerrar">×</button>
+</div>
+
 <!-- Toast container -->
 <div class="toast-container" id="toastContainer"></div>
+
 
 <!-- Copy toast -->
 <div class="copy-toast" id="copyToast"><svg class="svg-icon" viewBox="0 0 24 24" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;color:#10b981;"><polyline points="20 6 9 17 4 12"></polyline></svg> Texto copiado al portapapeles</div>
