@@ -1,0 +1,42 @@
+RESUMEN DE LA API DE MICROTAREAS - UNIFRANZ EXED
+=================================================
+
+El sistema de Microtareas (Tablero Kanban) funciona a través de dos endpoints principales que se comunican con Supabase. 
+
+1. API DE GESTIÓN INTERNA (CRUD)
+   Ruta: api/microtareas.php
+   Autenticación requerida: Sesión activa o token Bearer.
+   Uso: Es la API que utiliza el dashboard de forma interna para crear, editar y mover tareas.
+
+   Acciones (?action=...):
+   - list: (GET) Devuelve todas las microtareas (que no tengan soft-delete), ordenadas por prioridad (Alta > Media > Baja) y luego por fecha de entrega. También devuelve las subtareas (checklists) asociadas y los nombres de los responsables.
+   - create: (POST) Crea una nueva microtarea. Requiere un 'titulo'. Opcionalmente recibe descripción, fecha, prioridad, estado y la lista inicial de subtareas.
+   - update: (POST) Actualiza una microtarea existente (estado, título, fecha, etc.). También sincroniza el checklist (agrega nuevos ítems, actualiza existentes y elimina los removidos).
+   - delete: (POST) Realiza un borrado lógico (soft-delete) marcando el campo 'deleted_at' con la fecha actual. Solo accesible para administradores (en frontend).
+   - add_item: (POST) Añade un ítem individual al checklist de una tarea existente.
+   - toggle_item: (POST) Marca como completado o desmarcado (1 o 0) un ítem del checklist.
+   - delete_item: (POST) Elimina físicamente un ítem del checklist.
+   - stats: (GET) Devuelve el conteo interno total de tareas agrupadas por estado (Pendiente, En proceso, Completada) y subdivididas por sus prioridades.
+
+
+2. API PÚBLICA DE CONSULTA (READ-ONLY)
+   Ruta: api/stats.php?action=microtareas
+   Autenticación requerida: API Key (STATS_API_KEY) enviada como ?api_key=... o en header Authorization.
+   Uso: Es un endpoint de solo lectura pensado para integraciones externas (Dashboards en Looker Studio, widgets, scripts, etc).
+
+   Retorna:
+   - total: Número total de microtareas activas.
+   - por_estado: Resumen de tareas agrupadas por su estado actual (Pendiente, En proceso, Completada).
+   - por_prioridad: Resumen de tareas agrupadas por su prioridad (Alta, Media, Baja).
+   - microtareas: El listado completo de tareas con id, título, descripción, estado, prioridad, fecha de entrega y ID del responsable (formato JSON crudo ideal para ingesta de datos externa).
+   
+   Filtros soportados:
+   - &responsable=Nombre: Filtra los resultados para mostrar únicamente las microtareas asignadas a un responsable específico (Búsqueda difusa).
+   - &estado=Pendiente: Filtra para traer solo las de un estado concreto.
+
+-------------------------------------------------
+FLUJO DE EJEMPLO EN EL KANBAN
+-------------------------------------------------
+1. Al abrir la pestaña "Microtareas", la interfaz hace un GET a `api/microtareas.php?action=list`.
+2. Al arrastrar una tarjeta a la columna "Completada" o al usar el nuevo menú contextual, se dispara un POST a `api/microtareas.php?action=update` con `estado: 'Completada'`.
+3. Al hacer clic derecho y seleccionar "Duplicar", se lee la data de la tarjeta actual y se lanza un POST a `api/microtareas.php?action=create` copiando el título, descripción y los ítems del checklist vacíos (completada = 0).
