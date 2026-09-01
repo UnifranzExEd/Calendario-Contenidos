@@ -1457,17 +1457,22 @@ function renderContentForm(data) {
 
     // ✏️ Ajustes / Notas (Full width)
     html += `<div style="background:var(--bg-glass); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px; display:flex; flex-direction:column; gap:6px; margin-bottom:14px;">
-        <div class="editor-section-title" style="margin-bottom:0; font-size:0.72rem;">
-            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-            Ajustes / Notas
+        <div class="editor-section-title" style="margin-bottom:0; font-size:0.72rem; display:flex; justify-content:space-between; align-items:center;">
+            <div><svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+            Ajustes / Notas</div>
+            ${data.detalle?.ajustes ? `<button type="button" class="btn btn-secondary" style="padding:2px 8px; font-size:0.65rem; border-radius:4px;" onclick="document.getElementById('ajustes_readonly').style.display='none'; document.getElementById('form_ajustes_actuales').style.display='block'; this.style.display='none';">✏️ Editar / Borrar Historial</button>` : ''}
         </div>
         ${data.detalle?.ajustes 
-            ? `<div style="max-height:100px; overflow-y:auto; font-size:0.72rem; background:var(--bg-glass-hover); padding:7px 9px; border-radius:5px; border:1px solid var(--border-color); white-space:pre-wrap; line-height:1.45;">${escHtml(data.detalle.ajustes)}</div>` 
+            ? `<div id="ajustes_readonly" style="max-height:100px; overflow-y:auto; font-size:0.72rem; background:var(--bg-glass-hover); padding:7px 9px; border-radius:5px; border:1px solid var(--border-color); white-space:pre-wrap; line-height:1.45;">${escHtml(data.detalle.ajustes)}</div>` 
             : `<div style="font-size:0.7rem; color:var(--text-muted); font-style:italic;">Sin ajustes registrados.</div>`}
+        
+        <textarea class="form-control" id="form_ajustes_actuales" rows="4" 
+                  style="display:none; font-size:0.72rem; resize:vertical; padding:6px 8px;" 
+                  placeholder="Historial de ajustes...">${escHtml(data.detalle?.ajustes || '')}</textarea>
+                  
         <textarea class="form-control" id="form_nuevo_ajuste" rows="2"
                   placeholder="Nuevo ajuste (se registra con fecha y hora)..."
-                  style="font-size:0.78rem; resize:none; padding:6px 8px;"></textarea>
-        <input type="hidden" id="form_ajustes_actuales" value="${escHtml(data.detalle?.ajustes || '')}">
+                  style="font-size:0.78rem; resize:none; padding:6px 8px; margin-top:4px;"></textarea>
     </div>`;
 
     // ── Metrics section (only for community/admin on published content) ──
