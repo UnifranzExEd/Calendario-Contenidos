@@ -266,7 +266,37 @@ function _onRealtimeChange(payload) {
         const emoji = evt === 'INSERT' ? '✦' : evt === 'DELETE' ? '✕' : '↻';
         const label = evt === 'INSERT' ? 'Nuevo contenido' : evt === 'DELETE' ? 'Contenido eliminado' : 'Contenido actualizado';
         _showRealtimeToast(`${emoji} ${label}`);
+        _playNotificationSound();
     }, 800);
+}
+
+// ── Corto sonido de notificación tipo "burbuja" usando Web Audio API ──
+function _playNotificationSound() {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+
+        osc.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        // Frecuencia inicial y final (efecto pop hacia arriba)
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.05);
+
+        // Volumen: sube rápido, baja rápido
+        gainNode.gain.setValueAtTime(0, ctx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.15);
+    } catch (e) {
+        // Ignorar si el navegador bloquea el autoplay
+    }
 }
 
 function _showRealtimeToast(msg) {
